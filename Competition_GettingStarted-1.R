@@ -2,6 +2,7 @@
 
 # This script file is intended to help you get started on the Kaggle platform, and to show you how to make a submission to the competition.
 
+http://ec2-52-74-153-104.ap-southeast-1.compute.amazonaws.com/
 
 # Let's start by reading the data into R
 # Make sure you have downloaded these files from the Kaggle website, and have navigated to the directory where you saved the files on your computer 

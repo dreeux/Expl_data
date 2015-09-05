@@ -51,7 +51,7 @@ col_unique <- sapply(training, function(x) unique(x))
 
 ##CHECKING FOR NUMBER OF UNIQUE VALUES IN A COLUMN
 
-col_ele <- sapply(training, function(x) length(unique(x)))
+col_ele <- as.data.frame(lapply(training, function(x) length(unique(x))))
 
 ##GET THE COLUMN NAMES
 
@@ -69,9 +69,10 @@ length(col_ele[col_ele == 3])
 
 ##CHECK COLUMNS WITH ONLY 1 UNIQUE VALUE
 
-unique_one <- col_eleNAMES[col_ele[col_ele == 1]]
+unique_one <- subset(col_ele , select = c(col_ele == 1))
  
-unique_oneDF <- training[, c(unique_one)]
+unique_oneDF <- training[, c(names(unique_one))]
+
 head(unique_oneDF)
 
 ##IDENTIFY AND SEPERATE NUMERIC AND NON NUMERIC COLUMNS
@@ -80,30 +81,91 @@ training_num <- training[, sapply(training, is.numeric)] #CHECK WHETHER LAPPLY W
 
 training_char <- training[,sapply(training, is.character)]
 
-cat("Number of Numerical columns :" , dim(training_num[2]), "Number of character columns :",
+cat("Number of Numerical columns :" , dim(training_num)[2], "Number of character columns :",
     
-    dim(training_char[2]))
+    dim(training_char)[2])
 
 ##LOOK INTO NUMERIC COLUMNS DF
 
 ##CHECK FOR UNIQUE AND LENGTH OF UNIQUE COLUMNS
 
-num_unique <- str(lapply(training_num, unique), vec.len = 4) #TRY RUNNING WITHOUT STR
+str(sapply(training_num, unique)) #TRY RUNNING WITHOUT STR
 
-num_uniqueLEN <- sapply(training_num, length(unique)) #CHECK WITH LAPPLY
+num_uniqueLEN <- sapply(training_num, function(x) length(unique(x))) #CHECK WITH LAPPLY
+
+##################################################################################################
+
+numeric_ele <- as.data.frame(lapply(training_num, function(x) length(unique(x))))
+
+##CHECK FOR COLUMNS WITH 1,2,3 UNIQUE ELEMENTS
+
+length(numeric_ele[numeric_ele == 1])
+
+length(numeric_ele[numeric_ele == 2]) #MOSTLY COLUMNS WITH DUMMY VARS
+
+length(numeric_ele[numeric_ele == 3])
+
+##CHECK COLUMNS WITH ONLY 1 UNIQUE VALUE
+
+numeric_one <- subset(numeric_ele , select = c(numeric_ele == 1))
+
+numeric_oneDF <- training_num[, c(names(numeric_one))]
+
+##CHECK ELEMENTS
+
+sapply(numeric_oneDF, table)
+
+##CHECK COLUMNS WITH 2 UNIQUE VALUES
+
+numeric_two <- subset(numeric_ele , select = c(numeric_ele == 2))
+
+numeric_twoDF <- training_num[, c(names(numeric_two))]
+
+##CHECK ELEMENTS
+
+sapply(numeric_twoDF, table)
 
 ##DIG DEEPER INTO THE FIELDS
 
 ##DRAW A HISTOGRAM OF LENGTHS TO BETTER UNDERSTAND THE DATA
 
-#######LOTS OF TO BE DONE WRK WITH DATA##################################
-
-
 ##LOOK INTO CHARACTER COLUMNS DF
 
-char_unique <- str(lapply(training_char, unique), vec.len =4 )
+str(lapply(training_char, unique), vec.len =4 )
 
-char_uniqueLEN <- sapply(training_char, length(unique))
+char_ele <- as.data.frame(lapply(training_char, function(x) length(unique(x))))
+
+##################################################################################
+##CHECK FOR COLUMNS WITH 1,2,3 UNIQUE ELEMENTS
+
+range(char_ele)
+
+length(char_ele[char_ele == 1])
+
+length(char_ele[char_ele == 2]) #MOSTLY COLUMNS WITH DUMMY VARS
+
+length(char_ele[char_ele == 3])
+
+##CHECK COLUMNS WITH 2 UNIQUE VALUES
+
+char_two <- subset(char_ele , select = c(char_ele == 2))
+
+char_twoDF <- training_num[, c(names(char_two))]
+
+##CHECK ELEMENTS
+
+sapply(char_twoDF, table)
+
+##DIG DEEPER INTO THE FIELDS
+
+##DRAW A HISTOGRAM OF LENGTHS TO BETTER UNDERSTAND THE DATA
+
+
+
+
+
+
+
 
 ##DIG DEEPER INTO THE FIELDS
 

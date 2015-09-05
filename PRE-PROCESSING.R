@@ -113,7 +113,7 @@ numeric_oneDF <- training_num[, c(names(numeric_one))]
 
 ##CHECK ELEMENTS
 
-sapply(numeric_oneDF, table)
+lapply(numeric_oneDF, table)
 
 ##CHECK COLUMNS WITH 2 UNIQUE VALUES
 
@@ -123,7 +123,7 @@ numeric_twoDF <- training_num[, c(names(numeric_two))]
 
 ##CHECK ELEMENTS
 
-sapply(numeric_twoDF, table)
+lapply(numeric_twoDF, table)
 
 ##DIG DEEPER INTO THE FIELDS
 
@@ -146,28 +146,37 @@ length(char_ele[char_ele == 2]) #MOSTLY COLUMNS WITH DUMMY VARS
 
 length(char_ele[char_ele == 3])
 
-##CHECK COLUMNS WITH 2 UNIQUE VALUES
+##SOME COLUMNS HAVE NAMES: FIRST SEPERATE DATES THEN LOOK INTO THEM 
 
-char_two <- subset(char_ele , select = c(char_ele == 2))
+##SEPERATE OUT DATES AND TIMES INTO  DIFFERENT DFS
 
-char_twoDF <- training_char[, c(names(char_two))]
+training_date <- training_char[, grep("JAN1|FEB1|MAR1", training_char)]
 
-##CHECK ELEMENTS
+##REMOVE DATES FROM char DF
 
-sapply(char_twoDF, table)
+training_charD <- training_char[, !(names(training_char) %in% names(training_date))] 
 
-##SOME COLUMNS HAVE NAMES SEPERATE THEM 
+##training_charD has only CHAR variables checking further
+
+str(lapply(training_charD, unique), vec.len =4 )
+
+##SEPERATE FIELDS WITH BINARY VALUES
+
+charD_ele <- as.data.frame(lapply(training_charD, function(x) length(unique(x))))
+
+charD_two <- subset(charD_ele, select = c(charD_ele == 2))
+names(charD_ele)
+
+charD_twoDF <- training_char[, c(names(charD_two))]
+
+##CHECK ELEMENTS OF DF
+
+lapply(charD_twoDF, table)
+
+##DRILL DOWN FURTHER BY REMOVING THESE COLS
 
 
-##DIG DEEPER INTO THE FIELDS
 
-##DRAW A HISTOGRAM OF LENGTHS TO BETTER UNDERSTAND THE DATA
-
-
-
-
-
-##DIG DEEPER INTO THE FIELDS
 
 #REPLACING (-1, " ", []) WITH NA
 
@@ -177,11 +186,3 @@ training_char[training_char == ""] = NA
 
 training_char[training_char == "[]"] = NA
 
-##SEPERATE OUT DATES AND TIMES INTO  DIFFERENT DFS
-
-training_date <- training_char[, grep("JAN1|FEB1|MAR1", training_char),]
-
-##REMOVE DATES FROM char DF
-
-training_charD <- training_char[, !(names(training_char) %in% names(training_date))] 
-#CHECK THE DISSERENCE BETWEEN colnames and names

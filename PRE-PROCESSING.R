@@ -150,18 +150,18 @@ length(char_ele[char_ele == 3])
 
 char_two <- subset(char_ele , select = c(char_ele == 2))
 
-char_twoDF <- training_num[, c(names(char_two))]
+char_twoDF <- training_char[, c(names(char_two))]
 
 ##CHECK ELEMENTS
 
 sapply(char_twoDF, table)
 
+##SOME COLUMNS HAVE NAMES SEPERATE THEM 
+
+
 ##DIG DEEPER INTO THE FIELDS
 
 ##DRAW A HISTOGRAM OF LENGTHS TO BETTER UNDERSTAND THE DATA
-
-
-
 
 
 
@@ -185,5 +185,3 @@ training_date <- training_char[, grep("JAN1|FEB1|MAR1", training_char),]
 
 training_charD <- training_char[, !(names(training_char) %in% names(training_date))] 
 #CHECK THE DISSERENCE BETWEEN colnames and names
-
-training_date

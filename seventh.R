@@ -21,16 +21,21 @@ testing <- subset(test, select = -c(ID))
 dim(training); dim(testing)
 
 ########################################################################################
+tmp <- rbind(training, testing)
+
+tmp_num <- tmp[, sapply(tmp, is.numeric)] 
+
+tmp_char <- tmp[,sapply(tmp, is.character)]
+
+numeric_ele <- (lapply(tmp_num, function(x) length(unique(x))))
+
+char_ele <- (lapply(tmp_char, function(x) length(unique(x))))
 
 numeric_one <- subset(numeric_ele , subset  = c(numeric_ele == 1))
 
 ids <- c("VAR_0227", "VAR_0228")
 
 remove_col <- c(numeric_one, ids)
-
-######################################################################################
-
-tmp <- rbind(training, testing)
 
 tmp <- tmp[, !(names(tmp) %in% (remove_col))]
 
@@ -39,16 +44,15 @@ tmp_num <- tmp[, sapply(tmp, is.numeric)]
 
 tmp_char <- tmp[,sapply(tmp, is.character)]
 
-num_ele <- (lapply(tmp_num, function(x) length(unique(x))))
-
-char_ele <- (lapply(tmp_char, function(x) length(unique(x))))
-
 #####################################################################################
+
 tmp_date <- tmp_char[, grep("JAN1|FEB1|MAR1", tmp_char)]
 
 tmp_dates <- sapply(tmp_date, function(x) strptime(x, "%d%B%y :%H:%M:%S"))
 
-tmp_dates = do.call(cbind.data.frame, tmp_date)
+tmp_dates <-  do.call(cbind.data.frame, tmp_date)
+
+
 ####################################################################################
 
 tmp_time <- tmp_date[, names(tmp_date) %in% c("VAR_0204","VAR_0217")]
@@ -60,6 +64,11 @@ tmp_times <- do.call(cbind.data.frame, tmp_times)
 tmp_hour <- (sapply(tmp_times, function(x) as.numeric(as.character(substr(x, 1,2)))))
 
 tmp_hour <- do.call(cbind.data.frame, tmp_hour) 
+
+tmp_minute <- (sapply(training_time, function(x) as.numeric(as.character(substr(x, 4,5)))))
+
+tmp_minute <- do.call(cbind.data.frame, tmp_minute) 
+
 
 ######################################################################################
 

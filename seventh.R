@@ -25,21 +25,29 @@ tmp <- rbind(training, testing)
 
 tmp_num <- tmp[, sapply(tmp, is.numeric)] 
 
+dim(tmp_num)
+
 tmp_char <- tmp[,sapply(tmp, is.character)]
+
+dim(tmp_char)
 
 numeric_ele <- (lapply(tmp_num, function(x) length(unique(x))))
 
 char_ele <- (lapply(tmp_char, function(x) length(unique(x))))
 
 numeric_one <- subset(numeric_ele , subset  = c(numeric_ele == 1))
+names(numeric_one)
 
 ids <- c("VAR_0227", "VAR_0228")
 
-remove_col <- c(numeric_one, ids)
+remove_col <- c(names(numeric_one), ids)
 
 tmp <- tmp[, !(names(tmp) %in% (remove_col))]
 
+dim(tmp)
+
 ######################################################################################
+
 tmp_num <- tmp[, sapply(tmp, is.numeric)] 
 
 tmp_char <- tmp[,sapply(tmp, is.character)]
@@ -48,42 +56,34 @@ tmp_char <- tmp[,sapply(tmp, is.character)]
 
 tmp_date <- tmp_char[, grep("JAN1|FEB1|MAR1", tmp_char)]
 
-tmp_dates <- sapply(tmp_date, function(x) strptime(x, "%d%B%y :%H:%M:%S"))
+tmp_dates <- data.frame(sapply(tmp_date, function(x) strptime(x, "%d%B%y :%H:%M:%S")))
 
-tmp_dates <-  do.call(cbind.data.frame, tmp_date)
+tmp_year <- data.frame(sapply(tmp_dates, function(x) year(x)))
 
+tmp_wday <- data.frame(sapply(tmp_dates, function(x) wday(x)))
 
-####################################################################################
+tmp_month <- data.frame(sapply(tmp_dates, function(x) month(x)))
 
-tmp_time <- tmp_date[, names(tmp_date) %in% c("VAR_0204","VAR_0217")]
+tmp_yday <- data.frame(sapply(tmp_dates, function(x) yday(x)))
 
-tmp_times <- (sapply(tmp_time, function(x) strftime(x, "%H:%M:%S")))
+tmp_mday <- data.frame(sapply(tmp_dates, function(x) mday(x)))
 
-tmp_times <- do.call(cbind.data.frame, tmp_times) 
+tmp_weekdays <- data.frame(sapply(tmp_dates, function(x) weekdays(x)))
 
-tmp_hour <- (sapply(tmp_times, function(x) as.numeric(as.character(substr(x, 1,2)))))
+tmp_hour <- data.frame(sapply(tmp_dates, function(x) hour(x)))
 
-tmp_hour <- do.call(cbind.data.frame, tmp_hour) 
+tmp_minute <- data.frame(sapply(tmp_dates, function(x) minute(x)))
 
-tmp_minute <- (sapply(training_time, function(x) as.numeric(as.character(substr(x, 4,5)))))
+tmp_second <- data.frame(sapply(tmp_dates, function(x) second(x)))
 
-tmp_minute <- do.call(cbind.data.frame, tmp_minute) 
-
+##further modification like hour is in morning , afternoon, evening
+##minutes is either working, not working
 
 ######################################################################################
 
 training <- tmp[1:145231,]
 
 testing <- tmp[(nrow(training)+1): nrow(tmp), ]
-
-
-
-
-
-
-
-
-
 
 
 feature.names <- names(training)

@@ -56,29 +56,62 @@ tmp_char <- tmp[,sapply(tmp, is.character)]
 
 tmp_date <- tmp_char[, grep("JAN1|FEB1|MAR1", tmp_char)]
 
+dim(tmp_date)
+
 tmp_dates <- data.frame(sapply(tmp_date, function(x) strptime(x, "%d%B%y :%H:%M:%S")))
 
 tmp_year <- data.frame(sapply(tmp_dates, function(x) year(x)))
 
+names(tmp_year) <- paste("YEAR_", names(tmp_year), sep = "") 
+
 tmp_wday <- data.frame(sapply(tmp_dates, function(x) wday(x)))
+
+names(tmp_wday) <- paste("WDAY_", names(tmp_wday), sep = "") 
 
 tmp_month <- data.frame(sapply(tmp_dates, function(x) month(x)))
 
+names(tmp_month) <- paste("MONTH_", names(tmp_month), sep = "") 
+
 tmp_yday <- data.frame(sapply(tmp_dates, function(x) yday(x)))
+
+names(tmp_yday) <- paste("YDAY_", names(tmp_yday), sep = "") 
 
 tmp_mday <- data.frame(sapply(tmp_dates, function(x) mday(x)))
 
+names(tmp_mday) <- paste("MDAY_", names(tmp_mday), sep = "") 
+
 tmp_weekdays <- data.frame(sapply(tmp_dates, function(x) weekdays(x)))
+
+names(tmp_weekdays) <- paste("YEAR_", names(tmp_weekdays), sep = "") 
 
 tmp_hour <- data.frame(sapply(tmp_dates, function(x) hour(x)))
 
+names(tmp_hour) <- paste("HOUR_", names(tmp_hour), sep = "") 
+
 tmp_minute <- data.frame(sapply(tmp_dates, function(x) minute(x)))
+
+names(tmp_minute) <- paste("MINUTE_", names(tmp_minute), sep = "") 
 
 tmp_second <- data.frame(sapply(tmp_dates, function(x) second(x)))
 
-##further modification like hour is in morning , afternoon, evening
-##minutes is either working, not working
+names(tmp_second) <- paste("SECOND_", names(tmp_second), sep = "") 
 
+#################################################################################
+tmp <- tmp[, !(names(tmp) %in% names(tmp_date))]
+
+dim(tmp)
+
+dates <- cbind(tmp_dates, tmp_year, tmp_yday, tmp_weekdays, tmp_wday, tmp_second, 
+               tmp_hour, tmp_minute)
+
+dim(dates)
+
+tmp <- cbind(tmp, dates)
+
+dim(tmp)
+
+
+##further modification when will people most likely take a loan
 ######################################################################################
 
 training <- tmp[1:145231,]
@@ -190,8 +223,6 @@ clf_first <- xgb.training( params = param,
                         nrounds             = 2000, # changed from 300
                         
                         verbose             = 2,
-                        
-                        nthread = 2,
                         
                         maximize = TRUE)
 

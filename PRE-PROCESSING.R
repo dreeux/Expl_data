@@ -6,8 +6,6 @@ format(time, "%d-%m-%Y--%H:%M:%S")
 
 ##CALCULATING DIMENSIONS OF DATA WITHOUT READING IN
 
-
-
 ##READ IN DATA
 require(readr)
 
@@ -249,6 +247,12 @@ training_time <- training_date[, names(training_date) %in% c("VAR_0204","VAR_021
 training_time <- data.frame(sapply(training_time, function(x) strftime(x, "%H:%M:%S")))
 
 training_hour <- as.data.frame(sapply(training_time, function(x) as.numeric(as.character(substr(x, 1,2)))))
+
+
+
+
+
+
 
 
 #REPLACING (-1, " ", []) WITH NA

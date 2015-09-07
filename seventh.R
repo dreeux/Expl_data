@@ -58,6 +58,7 @@ tmp_date <- tmp_char[, grep("JAN1|FEB1|MAR1", tmp_char)]
 
 dim(tmp_date)
 
+
 tmp_dates <- data.frame(sapply(tmp_date, function(x) strptime(x, "%d%B%y :%H:%M:%S")))
 
 tmp_year <- data.frame(sapply(tmp_dates, function(x) year(x)))
@@ -101,14 +102,8 @@ tmp <- tmp[, !(names(tmp) %in% names(tmp_date))]
 
 dim(tmp)
 
-dates <- cbind(tmp_dates, tmp_year, tmp_yday, tmp_weekdays, tmp_wday, tmp_second, 
+dates <- cbind( tmp_year, tmp_yday, tmp_weekdays, tmp_wday, tmp_second, 
                tmp_hour, tmp_minute)
-
-dim(dates)
-
-tmp <- cbind(tmp, dates)
-
-dim(tmp)
 
 
 ##further modification when will people most likely take a loan
@@ -118,6 +113,7 @@ training <- tmp[1:145231,]
 
 testing <- tmp[(nrow(training)+1): nrow(tmp), ]
 
+dim(training); dim(testing)
 
 feature.names <- names(training)
 
@@ -134,9 +130,24 @@ for (f in feature.names) {
   }
 }
   
-training[is.na(training)] <- -9999
+training[is.na(training)] <- -1
 
-testing[is.na(testing)]   <- -9999
+testing[is.na(testing)]   <- -1
+
+dates[is.na(dates)] <- -1
+
+###############################################################################
+tmp <- rbind(training, testing)
+
+tmp <- cbind(tmp, dates)
+
+training <- tmp[1:145231,]
+
+testing <- tmp[(nrow(training)+1): nrow(tmp), ]
+
+dim(training); dim(testing)
+
+#############################################################################
 
 benchmark <- read_csv("D:/kaggle/Springleaf/SUBMISSION/second.csv")
 
@@ -190,33 +201,26 @@ feature.names <- names(training)
 
 dtraining <- xgb.DMatrix(data.matrix(training[,feature.names]), label= response)
 
-param <- list(  "objective"  = "binary:logistic"
+param <- list(  objective   = "binary:logistic", 
                 
-                , "eval_metric" = "auc"
+                eta                 = 0.014,
                 
-                , "eta" = 0.01
+                max_depth           = 10,
                 
-                , "subsample" = 0.7
+                subsample           = 0.7,
                 
-                , "colsample_bytree" = 0.5
+                colsample_bytree    = 0.7,
                 
-                , "min_child_weight" =6
-                
-                , "max_depth" = 9
-                
-                , "alpha" = 4
-                
-                , "nthreads" = 2
-                
-                , eval_metric         = "auc"
+                eval_metric         = "auc"
 )
+
 
 
 
 #cv <- xgb.cv(params = param,data =  dtraining,nrounds = 700, nfold = 5, showsd = T, metrics = "auc"
 #, verbose = 2, maximize = TRUE)
 
-clf_first <- xgb.training( params = param, 
+clf_first <- xgb.train( params = param, 
                         
                         data                = dtraining, 
                         
@@ -232,7 +236,6 @@ submission_second$target <- NA
 
 submission_second[,"target"] <- predict(clf_first, data.matrix(testing[,feature.names]))
 
-write_csv(submission_second, "nine.csv")
+write_csv(submission_second, "ten.csv")
 
-xgb.save(clf_first, "xgb_nine.R")
 

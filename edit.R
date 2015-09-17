@@ -1,3 +1,5 @@
+#always compute differences / raios of features help improve pred rates
+
 rm(list = ls())
 
 library(readr); library(xgboost); library(doParallel); library(caret) 

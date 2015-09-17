@@ -18,6 +18,10 @@ train_ID <- train$ID
 
 train$ID <- NULL
 
+levels <- unique(train$VAR_0241)
+
+train$VAR_0241 <- as.factor(train$VAR_0241, levels = levels)
+
 test <- read_csv("D:/kaggle/Springleaf/DATA/CSV/test.csv")
 
 # save ID and response
@@ -25,6 +29,10 @@ test <- read_csv("D:/kaggle/Springleaf/DATA/CSV/test.csv")
 test_ID <- test$ID
 
 test$ID <- NULL
+
+levels <- unique(test$VAR_0241)
+
+test$VAR_0241 <- as.factor(test$VAR_0241, levels = levels)
 
 print(dim(train)); print(dim(test))
 
@@ -36,24 +44,27 @@ datecolumns = c("VAR_0073", "VAR_0075", "VAR_0156", "VAR_0157", "VAR_0158",
                 "VAR_0159", "VAR_0166", "VAR_0167", "VAR_0168", "VAR_0176", 
                 "VAR_0177", "VAR_0178", "VAR_0179", "VAR_0204", "VAR_0217")
 
-tmp <- rbind(train, test)
+train_cropped <- train[datecolumns]
 
-tmp_cropped <- tmp[datecolumns]
-
-tmp_cc <- data.frame(apply(tmp_cropped, 
+train_cc <- data.frame(apply(train_cropped, 
                              2, 
                              function(x) as.double(strptime(x, 
                                                             format='%d%b%y:%H:%M:%S', tz="UTC"))))
+
+#check how resonse varies with change in representation of date (month, year etc also check which day/month/year
+
+# has highest loan buyers i.e. check for seasonality trends)
+
 for (dc in datecolumns){
   
-  tmp[dc] <- NULL
+  train[dc] <- NULL
   
-  tmp[dc] <- tmp_cc[dc]
+  train[dc] <- train_cc[dc]
 }
 
-tmp_cc <- NULL
+train_cc <- NULL
 
-tmp_cropped <- NULL
+train_cropped <- NULL
 
 gc()
 
@@ -92,22 +103,22 @@ for (f in feature.names) {
   
 }
 
+#dates seem to be skewed towards right , applying Box Cox transforms to both train and test
+
+train_pre <-  preProcess(train[datecolumns], method = ("BoxCox", "scale"))
+
+train_pre_pred <- predict(train_pre, train[datecolumns])
+
+train[datecolumns] <- train_pre_pred
 
 
-require(caret)
+test_pre <-  preProcess(test[datecolumns], method = ("BoxCox", "scale"))
 
-train_test_1 <-  preProcess(train[datecolumns], method = ("BoxCox"))
+test_pre_pred <- predict(test_pre, test[datecolumns])
 
-train_test <- predict(train_test_1, train[datecolumns])
+test[datecolumns] <- train_pre_pred
 
-train[datecolumns] <- train_test
-
-
-train_test_2 <-  preProcess(test[datecolumns], method = ("BoxCox"))
-
-train_test1 <- predict(train_test_2, test[datecolumns])
-
-test[datecolumns] <- train_test1
+#This data set has large number of nzv removing them
 
 nzv <- nearZeroVar(train)
 
@@ -117,14 +128,47 @@ train <- train[, -nzv]
 
 test <- test[, -nzv_test]
 
-train[is.na(train)] <- -1
+#removing predictors with corelations greater than 0.75(##HYPOTHESIS)
 
-test[is.na(test)]   <- -1
+cor_train <- cor(train) # convert to a df and save it as a csv and delete the file
 
+cor_test <- cor(test)
+
+highcor_tr <- findCorrelation(cor_train, cutoff = 0.75)
+
+highcor_te <- findCorrelation(cor_test, cutoff = 0.75)
+
+cor_train <- data.frame(cor_train)
+
+write_csv(cor_train, "TRAIN_COR.csv")
+
+cor_test <- data.frame(cor_test)
+
+write_csv(cor_test, "TEST_COR.csv")
+
+train <- train[, -highcor_tr]
+
+test <- test[, -highcor_te]
+
+
+                                                            
+train[is.na(train)] <- 0
+
+test[is.na(test)]   <- 0
 
 feature.names <- names(train)[1:ncol(train)]
 
-dtrain <- xgb.DMatrix(data.matrix(train[,feature.names]), label=train_target)
+split <- createDataPartition(y = train_target, list = F, p = 0.9)
+
+training <- train[split, ]
+
+validation <- train[-split, ]
+
+dtrain <- xgb.DMatrix(data.matrix(training[,feature.names]), label=train_target[split])
+
+dval <- xgb.DMatrix(data.matrix(validation[,feature.names]), label=train_target[-split])
+
+watchlist <- list(eval = dval, train = dtrain)
 
 gc()
 
@@ -140,33 +184,29 @@ param <- list(  objective           = "binary:logistic",
                 # lambda = 1
 )
 
-library(doParallel)
-
-cl <- makeCluster(2)
-
-registerDoParallel(cl)
+cl <- makeCluster(2); registerDoParallel(cl)
 
 #clf_cv <- xgb.cv(params = param, data = dtrain, nrounds = 1500, nfold = 4, 
                  
-#                 showsd = T, verbose = T, maximize = T)
+#               showsd = T, verbose = T, maximize = T,  watchlist = watchlist)
 
 
+rm(training, validation, cor_test, cor_train, test_pre_pred, train_pre_pred, test_cc, train_cc )
+
+gc()
 
 clf <- xgb.train(   params              = param, 
                     data                = dtrain, 
-                    nrounds             = 2500, #300, #280, #125, #250, # changed from 300
+                    nrounds             = 2500, 
                     verbose             = 2, 
-                    
+                    watchlist           = watchlist,
                     maximize            = TRUE)
 
 
-dtrain=0
-gc()
+submission <- data.frame(ID=test_ID)
 
-submission_second <- data.frame(ID=test_ID)
+submission$target <- NA 
 
-submission_second$target <- NA 
+submission[,"target"] <- predict(clf, data.matrix(test[,feature.names]))
 
-submission_second[,"target"] <- predict(clf, data.matrix(test[,feature.names]))
-
-write_csv(submission_second, "09152015_2.csv")
+write_csv(submission, "09182015_1.csv")

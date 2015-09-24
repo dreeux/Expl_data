@@ -1,3 +1,131 @@
+rm(list = ls())
+
+require("h2o") ;require("h2oEnsemble"); require("SuperLearner"); require("cvAUC")
+
+library(readr); library(xgboost); library(doParallel); library(caret); library(Metrics)
+
+set.seed(8675309)
+
+train <- read_csv("D:/kaggle/Springleaf/DATA/CSV/train.csv")
+
+# save ID and response
+
+train_target <- train$target
+
+train$target <- NULL
+
+train_ID <- train$ID
+
+train$ID <- NULL
+
+train$VAR_0241 <- as.numeric(as.character(train$VAR_0241))
+
+test <- read_csv("D:/kaggle/Springleaf/DATA/CSV/test.csv")
+
+# save ID and response
+
+test_ID <- test$ID
+
+test$ID <- NULL
+
+test$VAR_0241 <- as.numeric(as.character(test$VAR_0241))
+
+print(dim(train)); print(dim(test))
+
+datecolumns = c("VAR_0073", "VAR_0075", "VAR_0156", "VAR_0157", "VAR_0158",
+
+"VAR_0159", "VAR_0166", "VAR_0167", "VAR_0168", "VAR_0176",
+
+"VAR_0177", "VAR_0178", "VAR_0179", "VAR_0204", "VAR_0217")
+
+train_cropped <- train[datecolumns]
+
+train_cc <- data.frame(apply(train_cropped, 2, function(x) as.double(strptime(x,
+
+format='%d%b%y:%H:%M:%S', tz="UTC"))))
+
+for (dc in datecolumns){
+
+train[dc] <- NULL
+
+train[dc] <- train_cc[dc]
+
+}
+
+train_cc <- NULL
+
+train_cropped <- NULL
+
+gc()
+
+test_cropped <- test[datecolumns]
+
+test_cc <- data.frame(apply(test_cropped, 2, function(x) as.double(strptime(x,
+
+format='%d%b%y:%H:%M:%S', tz="UTC"))))
+
+for (dc in datecolumns){
+
+test[dc] <- NULL
+
+test[dc] <- test_cc[dc]
+
+}
+
+test_cc <- NULL
+
+test_cropped <- NULL
+
+gc()
+
+feature.names <- names(train)[1:ncol(train)]
+
+for (f in feature.names) {
+
+if (class(train[[f]])=="character") {
+
+levels <- unique(c(train[[f]], test[[f]]))
+
+train[[f]] <- as.integer(factor(train[[f]], levels=levels))
+
+test[[f]]  <- as.integer(factor(test[[f]],  levels=levels))
+
+}
+
+}
+
+print(dim(train)); print(dim(test))
+
+train_pre <-  preProcess(train[datecolumns], method = ("BoxCox"))
+
+train_pre_pred <- predict(train_pre, train[datecolumns])
+
+train[datecolumns] <- train_pre_pred
+
+test_pre <-  preProcess(test[datecolumns], method = ("BoxCox"))
+
+test_pre_pred <- predict(test_pre, test[datecolumns])
+
+test[datecolumns] <- test_pre_pred
+
+print(dim(train)); print(dim(test))
+
+nzv <- nearZeroVar(train)
+
+nzv_test <- nearZeroVar(test)
+
+train <- train[, -nzv]
+
+test <- test[, -nzv_test]
+
+print(dim(train)); print(dim(test))
+
+train[is.na(train)] <- 0
+
+test[is.na(test)]   <- 0
+
+gc()
+
 localH2O <- h2o.init(max_mem_size = "10g")
 
 train_target <- as.factor(train_target)
@@ -17,7 +145,6 @@ split <- h2o.runif(train.hex, seed = 1234)
 training_frame <- h2o.assign(train.hex[split<0.8,], "training_frame")
 
 validation_frame <- h2o.assign(train.hex[split>=0.8,], "validation_frame")
-
 
 learner <- c("h2o.glm.wrapper", "h2o.randomForest.wrapper", 
    "h2o.gbm.wrapper", "h2o.deeplearning.wrapper")

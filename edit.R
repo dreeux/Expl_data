@@ -215,6 +215,8 @@ write_csv(submission, "09182015_1.csv")
 
 ########################################################################################################################
 
+start <- Sys.time()
+
 models <- c()
 
 for( i in 1:10) {
@@ -261,6 +263,9 @@ model_gbm <- h2o.gbm( x = feature.names,
 models <- c(models, model_gbm)
 
 } 
+
+
+gbm_time <- start - Sys.time()
 
 #find the best model
 

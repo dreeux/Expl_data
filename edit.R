@@ -302,4 +302,23 @@ h2o.auc(h2o.performance(best_model, training.hex))
 
 h2o.auc(h2o.performance(best_model, validation.hex))
 
+#########################################################################################################################################################################
 
+#OUTLIER DETECTION
+
+
+dl_autoencoder = h2o.deeplearning(x = feature.names , training_frame = training.hex,  model_id = "autoencoders", autoencoder = T)
+
+anomalies   = h2o.anomaly(object = dl_autoencoder, training.hex)
+
+anomalies.R = as.data.frame(anomalies)
+
+# Plot the reconstruction error and add a line for error in the 90th percentile
+
+quantile  = h2o.quantile(anomalies$Reconstruction.MSE)
+
+threshold = quantile["90%"]
+
+plot(anomalies.R$Reconstruction.MSE)
+
+abline(h=threshold)

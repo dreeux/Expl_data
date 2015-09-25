@@ -342,3 +342,7 @@ train_numr[train_numr %in%  c(999999998, 999999999, -99999, -99999, -99999999, 9
 ########################################################################################################################
 
 pp_1_test = preProcess(iris_miss_1, method = "knnImpute")
+
+set.seed(1)
+
+test_1_result <- predict(pp_1_test, iris_miss_1)

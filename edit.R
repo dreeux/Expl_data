@@ -322,3 +322,19 @@ threshold = quantile["90%"]
 plot(anomalies.R$Reconstruction.MSE)
 
 abline(h=threshold)
+
+#############################################################################################################################
+
+#strategy_1 for NA 
+
+train_char[train_char==-1] = NA
+
+train_char[train_char==""] = NA
+
+train_char[train_char=="[]"] = NA
+
+## sapply(train_numr,  (function to check for atleast four continous 9`s))
+
+#sapply(
+
+train_numr[train_numr %in%  c(999999998, 999999999, -99999, -99999, -99999999, 999999996 ] = NA

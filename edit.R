@@ -255,7 +255,7 @@ model_gbm <- h2o.gbm( x = feature.names,
 
 		      learn_rate = rand_learn_rate,
 
-		      nfolds = 5
+		      nfolds = 5 #add other params by searching (make d model more efficient)
 )
 
 models <- c(models, model_gbm)

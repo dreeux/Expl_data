@@ -352,3 +352,5 @@ test_1_result <- predict(pp_1_test, iris_miss_1)
 preProc <- preProcess(method="bagImpute", training[, 1:4])
 
 training[, 1:4] <- predict(preProc, training[, 1:4])
+
+#considering the number of NA`s should check for median NA impute		

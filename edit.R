@@ -2,9 +2,7 @@
 
 rm(list = ls())
 
-library(readr); library(xgboost); library(doParallel); library(caret) 
-
-cl <- makeCluster(2); registerDoParallel(cl)
+library(readr); library(xgboost); library(doParallel); library(caret); library(Metrics)
 
 set.seed(8675309) 
 
@@ -20,9 +18,8 @@ train_ID <- train$ID
 
 train$ID <- NULL
 
-levels <- unique(train$VAR_0241)
+train$VAR_0241 <- as.numeric(as.character(train$VAR_0241))
 
-train$VAR_0241 <- as.factor(train$VAR_0241, levels = levels)
 
 test <- read_csv("D:/kaggle/Springleaf/DATA/CSV/test.csv")
 
@@ -32,15 +29,11 @@ test_ID <- test$ID
 
 test$ID <- NULL
 
-levels <- unique(test$VAR_0241)
-
-test$VAR_0241 <- as.factor(test$VAR_0241, levels = levels)
+test$VAR_0241 <- as.numeric(as.character(test$VAR_0241))
 
 print(dim(train)); print(dim(test))
 
 #To find date columns -- really didn`t understand how
-
-dates = names(train[,grep("JAN1|FEB1|MAR1", train), ])
 
 datecolumns = c("VAR_0073", "VAR_0075", "VAR_0156", "VAR_0157", "VAR_0158", 
                 "VAR_0159", "VAR_0166", "VAR_0167", "VAR_0168", "VAR_0176", 
@@ -105,20 +98,27 @@ for (f in feature.names) {
   
 }
 
+print(dim(train)); print(dim(test))
 #dates seem to be skewed towards right , applying Box Cox transforms to both train and test
 
-train_pre <-  preProcess(train[datecolumns], method = ("BoxCox", "scale"))
+
+train_pre <-  preProcess(train[datecolumns], method = ("BoxCox",  #"scale"))
 
 train_pre_pred <- predict(train_pre, train[datecolumns])
 
 train[datecolumns] <- train_pre_pred
 
 
-test_pre <-  preProcess(test[datecolumns], method = ("BoxCox", "scale"))
+test_pre <-  preProcess(test[datecolumns], method = ("BoxCox", #"scale"))
 
 test_pre_pred <- predict(test_pre, test[datecolumns])
 
-test[datecolumns] <- train_pre_pred
+test[datecolumns] <- test_pre_pred
+
+print(dim(train)); print(dim(test))
+
+############################################################################################################
+
 
 #This data set has large number of nzv removing them
 
@@ -130,33 +130,32 @@ train <- train[, -nzv]
 
 test <- test[, -nzv_test]
 
-#removing predictors with corelations greater than 0.75(##HYPOTHESIS)
-
-cor_train <- cor(train) # convert to a df and save it as a csv and delete the file
-
-cor_test <- cor(test)
-
-highcor_tr <- findCorrelation(cor_train, cutoff = 0.75)
-
-highcor_te <- findCorrelation(cor_test, cutoff = 0.75)
-
-cor_train <- data.frame(cor_train)
-
-write_csv(cor_train, "TRAIN_COR.csv")
-
-cor_test <- data.frame(cor_test)
-
-write_csv(cor_test, "TEST_COR.csv")
-
-train <- train[, -highcor_tr]
-
-test <- test[, -highcor_te]
+print(dim(train)); print(dim(test))
 
 
-                                                            
-train[is.na(train)] <- 0
+#train_pre_total <-  preProcess(train[ , !(names(train) %in% datecolumns)], method =   "scale") 
 
-test[is.na(test)]   <- 0
+#train_pre_pred <- predict(train_pre_total, train[ , !(names(train) %in% datecolumns)])
+                                                  
+#train[ , !(names(train) %in% datecolumns)] <- train_pre_pred
+                                                  
+                                                  
+#test_pre_total <-  preProcess(test[, !(names(test) %in% datecolumns)], method = "scale")
+                                                  
+#test_pre_pred <- predict(test_pre_total, test[ , !(names(test) %in% datecolumns)])
+                                                  
+#test[ , !(names(test) %in% datecolumns)] <- test_pre_pred
+                                                  
+#print(dim(train)); print(dim(test))
+                                                  
+train[is.na(train)] <- -987654
+
+test[is.na(test)]   <- -987654
+
+#tmp <- rbind(train, test)
+
+
+#rm(tmp)
 
 feature.names <- names(train)[1:ncol(train)]
 
@@ -164,11 +163,15 @@ split <- createDataPartition(y = train_target, list = F, p = 0.9)
 
 training <- train[split, ]
 
+y_train <- train_target[split]
+
 validation <- train[-split, ]
 
-dtrain <- xgb.DMatrix(data.matrix(training[,feature.names]), label=train_target[split])
+y_val <- train_target[-split]
 
-dval <- xgb.DMatrix(data.matrix(validation[,feature.names]), label=train_target[-split])
+dtrain <- xgb.DMatrix(data.matrix(training[,feature.names]), label= y_train)
+
+dval <- xgb.DMatrix(data.matrix(validation[,feature.names]), label=y_val)
 
 watchlist <- list(eval = dval, train = dtrain)
 
@@ -186,6 +189,8 @@ param <- list(  objective           = "binary:logistic",
                 # lambda = 1
 )
 
+rm(training, validation, test_pre_pred, train_pre_pred, test_cc, train_cc )
+
 cl <- makeCluster(2); registerDoParallel(cl)
 
 #clf_cv <- xgb.cv(params = param, data = dtrain, nrounds = 1500, nfold = 4, 
@@ -193,17 +198,15 @@ cl <- makeCluster(2); registerDoParallel(cl)
 #               showsd = T, verbose = T, maximize = T,  watchlist = watchlist)
 
 
-rm(training, validation, cor_test, cor_train, test_pre_pred, train_pre_pred, test_cc, train_cc )
-
-gc()
 
 clf <- xgb.train(   params              = param, 
                     data                = dtrain, 
-                    nrounds             = 2500, 
+                    nrounds             = 2000, 
                     verbose             = 2, 
                     watchlist           = watchlist,
                     maximize            = TRUE)
 
+gc()
 
 submission <- data.frame(ID=test_ID)
 
@@ -211,4 +214,50 @@ submission$target <- NA
 
 submission[,"target"] <- predict(clf, data.matrix(test[,feature.names]))
 
-write_csv(submission, "09182015_1.csv")
+write_csv(submission, "D:/kaggle/Springleaf/SUBMISSION/09192015_2.csv")
+
+############################################################################################################
+
+control <- trainControl(method = "cv", number = 10, verboseIter = T,
+                        
+                        summaryFunction = twoClassSummary
+)
+
+
+grid_xgb <- expand.grid(eta = 0.001,
+                        
+                        max_depth = 10, 
+                        
+                        nrounds = 2000)
+
+
+caret_xgb <- train(train, train_target,
+                   
+                   method = "xgbTree" , trControl = control,
+                   
+                   metric = "auc" ,
+                   
+                   tuneGrid = grid_xgb,
+                   
+                   savePredictions=TRUE, 
+                   
+                   "min_child_weight" = 20,
+                   
+                   "subsample" = .7,
+                   
+                   "colsample_bytree" = .8,
+                   
+                   "scale_pos_weight" = 1.5
+                   
+)
+
+##########################################################################################################
+#09192015
+
+#This time scaled only the date columns should see what happens when we scale the entire train set
+
+#Tried removing predictors with corelations greater than 0.75 left with oly 400var , 0.78xx CV score
+
+#bad cv scores when all variables are scaled
+
+#Added caret model obj to the model

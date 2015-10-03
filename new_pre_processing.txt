@@ -1,0 +1,191 @@
+x <- c("start  of the first step", "Reading in the data"); cat(x, sep = "\n")
+
+rm(list = ls())
+
+library(readr); library(xgboost); library(caret)
+
+set.seed(8675309)
+
+train <- read_csv("D:/kaggle/Springleaf/DATA/CSV/train.csv")
+
+# save ID and response
+
+train_target <- train$target
+
+train$target <- NULL
+
+train_ID <- train$ID
+
+train$ID <- NULL
+
+test <- read_csv("D:/kaggle/Springleaf/DATA/CSV/test.csv")
+
+# save ID and response
+
+test_ID <- test$ID
+
+test$ID <- NULL
+
+#train$VAR_0241 <- as.numeric(as.character(train$VAR_0241))
+
+#test$VAR_0241 <- as.numeric(as.character(test$VAR_0241))
+
+print(dim(train)); print(dim(test))
+
+#bind train and test for better and easier pre-processing
+
+tmp <- rbind(train, test)
+
+#seperate out date columns in train and test (mostly by using a grep function)
+
+datecolumns = c("VAR_0073", "VAR_0075", "VAR_0156", "VAR_0157", "VAR_0158",
+                
+                "VAR_0159", "VAR_0166", "VAR_0167", "VAR_0169","VAR_0168", 
+                
+                "VAR_0176", "VAR_0177", "VAR_0178", "VAR_0179", "VAR_0204", "VAR_0217")
+
+tmp_date <- tmp[datecolumns]
+
+#convert into
+
+tmp_date <- data.frame(apply(tmp_date, 2, 
+                             
+                             function(x) (strptime(x, format = "%d%b%y: %H:%M:%S",tz = "UTC"))))
+
+
+
+tmp_date[ ,c(17:32)] <- data.frame(apply(tmp_date[ , c(1:16)], 2, function(x) wday(x)))
+
+names(tmp_date)[(17:32)] <- paste0("wday_", names(tmp_date)[(1:16)])
+
+
+
+tmp_date[ ,c(33:48)] <- data.frame(apply(tmp_date[ , c(1:16)], 2, function(x) mday(x)))
+
+names(tmp_date)[(33:48)] <- paste0("mday_", names(tmp_date)[(1:16)])
+
+
+
+tmp_date[, c(49,50)] <- data.frame(apply(tmp_date[ , c(15,16)], 2, function(x) hour(x) )) 
+
+names(tmp_date)[(49:50)] <- paste0("hour_", names(tmp_date)[(1:16)])
+
+
+
+tmp_date[ , c(51,52)] <- data.frame(apply(tmp_date[ , c(49, 50)], 2, function(x) 
+  
+  ifelse(x <= 6, 1, 
+         
+         ifelse(x <= 12, 2,
+                
+                ifelse(x <= 18, 3,
+                       
+                       ifelse(x <= 24, 4))))))
+
+
+names(tmp_date)[c(51,52)] <-  paste0("Dzones_", names(tmp_date)[(15:16)])
+
+
+
+#plot histogram of dates
+
+par(mar=c(2,2,2,2),mfrow=c(4,4))
+
+for(i in 1:16){
+  
+  hist(tmp_date[,i], "weeks" ,format = "%d %b %y", main = names(tmp_date[,i]), 
+       
+       xlab="", ylab="")
+  
+}
+
+for(i in 1:16){
+  
+  tmp_date[, i] <- as.numeric(tmp_date[, i])
+}
+
+
+tmp_pre <-  preProcess(tmp_date[ , c(1:16)], method = ("BoxCox"))
+
+tmp_pre_pred <- predict(tmp_pre, tmp_date[ , c(1:16)])
+
+tmp_date[ , c(1:16)] <- tmp_pre_pred
+
+
+
+
+dim(tmp)
+
+tmp <- tmp[ , !(names(tmp) %in% (datecolumns))]
+
+tmp <- cbind(tmp, tmp_date)
+
+dim(tmp); dim(tmp_date)
+
+gc()
+
+nzv <- nearZeroVar(tmp)
+
+tmp <- tmp[, -nzv]
+
+#check numeric columns for effective encoding of categorical features
+
+#seperate numeric and character columns
+
+tmp_numr <- tmp[ , sapply(tmp, is.numeric)]
+
+tmp_char <- tmp[ , sapply(tmp, is.character)]
+
+cat("Numerical Column Count", length(names(tmp_numr)),"\n", 
+    
+    "Character column count", length(names(tmp_char)))
+
+#check for number of unique elements per column_character
+
+str(lapply(tmp_char, unique ), vec.len = 3)
+
+
+#check for number of unique elements per column_numeric
+
+str(lapply(tmp_numr, unique ), vec.len = 3, list.len = 900)
+
+sapply(tmp_numr, function(x) grep(999999, x))
+
+
+dim(train); dim(test)
+
+nzv <- nearZeroVar(train)
+
+nzv_test <- nearZeroVar(test)
+
+train <- train[, -nzv]
+
+test <- test[, -nzv_test]
+
+feature.names <- names(train)[1:ncol(train)]
+
+for (f in feature.names) {
+  
+  if (class(train[[f]])=="character") {
+    
+    levels <- unique(c(train[[f]], test[[f]]))
+    
+    train[[f]] <- as.integer(factor(train[[f]], levels=levels))
+    
+    test[[f]]  <- as.integer(factor(test[[f]],  levels=levels))
+    
+  }
+  
+}
+
+print(dim(train)); print(dim(test))
+
+train[is.na(train)] <- -98765
+
+test[is.na(test)]   <- -98765
+
+gc()
+
+write_csv(train, "D:/kaggle/Springleaf/DATA/modify/training.csv")
+
+write_csv(train, "D:/kaggle/Springleaf/DATA/modify/testing.csv")

@@ -1,0 +1,289 @@
+
+x <- c("start  of the first step", "Reading in the data"); cat(x, sep = "\n")
+
+rm(list = ls())
+
+library(readr); library(xgboost); library(caret); library(lubridate)
+
+library(readr); library(xgboost); library(doParallel); library(caret) 
+
+cl <- makeCluster(2); registerDoParallel(cl)
+
+set.seed(8675309)
+
+train <- read_csv("D:/kaggle/Springleaf/DATA/CSV/train.csv")
+
+# save ID and response
+
+train_target <- train$target
+
+train$target <- NULL
+
+train_ID <- train$ID
+
+train$ID <- NULL
+
+test <- read_csv("D:/kaggle/Springleaf/DATA/CSV/test.csv")
+
+# save ID and response
+
+test_ID <- test$ID
+
+test$ID <- NULL
+
+#train$VAR_0241 <- as.numeric(as.character(train$VAR_0241))
+
+#test$VAR_0241 <- as.numeric(as.character(test$VAR_0241))
+
+print(dim(train)); print(dim(test))
+
+#bind train and test for better and easier pre-processing
+
+tmp <- rbind(train, test)
+
+#seperate out date columns in train and test (mostly by using a grep function)
+
+datecolumns = c("VAR_0073", "VAR_0075", "VAR_0156", "VAR_0157", "VAR_0158",
+                
+                "VAR_0159", "VAR_0166", "VAR_0167", "VAR_0169","VAR_0168", 
+                
+                "VAR_0176", "VAR_0177", "VAR_0178", "VAR_0179", "VAR_0204", "VAR_0217")
+
+tmp_date <- tmp[datecolumns]
+
+#convert into
+
+tmp_date <- data.frame(apply(tmp_date, 2, 
+                             
+                      function(x) (strptime(x, format = "%d%b%y: %H:%M:%S",tz = "UTC"))))
+
+
+
+tmp_date[ ,c(17:32)] <- data.frame(apply(tmp_date[ , c(1:16)], 2, function(x) wday(x)))
+
+names(tmp_date)[(17:32)] <- paste0("wday_", names(tmp_date)[(1:16)])
+
+
+
+tmp_date[ ,c(33:48)] <- data.frame(apply(tmp_date[ , c(1:16)], 2, function(x) mday(x)))
+
+names(tmp_date)[(33:48)] <- paste0("mday_", names(tmp_date)[(1:16)])
+
+
+
+tmp_date[, c(49:50)] <- data.frame(apply(tmp_date[ , c(15:16)], 2, function(x) hour(x) )) 
+
+names(tmp_date)[(49:50)] <- paste0("hour_", names(tmp_date)[c(15:16)])
+
+
+
+tmp_date[ , c(51:52)] <- data.frame(apply(tmp_date[ , c(49:50)], 2, function(x) 
+  
+                        ifelse(x <= 6, 1, 
+         
+                        ifelse(x <= 12, 2,
+                
+                        ifelse(x <= 18, 3,
+                       
+                        ifelse(x <= 24, 4))))))
+
+
+names(tmp_date)[(51:52)] <-  paste0("Dzones_", names(tmp_date)[(15:16)])
+
+#plot histogram of dates
+
+par(mar=c(2,2,2,2),mfrow=c(4,4))
+
+for(i in 1:16){
+  
+  hist(tmp_date[,i], "weeks" ,format = "%d %b %y", main = names(tmp_date[,i]), 
+       
+       xlab="", ylab="")
+}
+
+for(i in 1:16){
+  
+  tmp_date[, i] <- as.numeric(tmp_date[, i])
+}
+
+
+tmp_pre <-  preProcess(tmp_date[ , c(1:16)], method = ("BoxCox"))
+
+tmp_pre_pred <- predict(tmp_pre, tmp_date[ , c(1:16)])
+
+tmp_date[ , c(1:16)] <- tmp_pre_pred
+
+
+
+
+dim(tmp)
+
+tmp <- tmp[ , !(names(tmp) %in% (datecolumns))]
+
+tmp <- cbind(tmp, tmp_date)
+
+dim(tmp); dim(tmp_date)
+
+gc()
+
+nzv <- nearZeroVar(tmp)
+
+tmp <- tmp[, -nzv]
+
+##########################################################################################
+
+#Better encoding of categorical variables
+
+imp_feature <- read_csv("D:/kaggle/Springleaf/xgb_featureImp.csv")
+
+names <- (imp_feature$Feature)[1:100]
+
+imp_names <- sapply(names, function(x) names(tmp)[x])
+
+tmp_imp <- tmp[c(1:1000) , (names(tmp) %in% imp_names)]
+
+write_csv(tmp_imp, "imp_1000.csv")
+
+############################################################################################
+
+#Group by function;select columns to apply function and also the interaction degrees
+
+##group_Data function
+
+groupData <- function(xmat, Degree){
+  
+  require(foreach, quietly = T)
+  
+  #indices of combinations
+  
+  xind <- combn(1:ncol(xmat), Degree)
+  
+  #storage structure for the result
+  
+  agx <- foreach(ii = 1:ncol(xind), .combine = cbind) %do%
+    
+  {
+    x <- xmat[ , xind[1, ii]]
+    
+    for(jj in 2:nrow(xind))
+      
+    {
+      x <- paste(x, xmat[ , xind[jj, ii]], sep = "_")
+      
+    }
+    x
+  }
+  colnames(agx) <- paste(paste("f", Degree, sep = ""), 1:ncol(agx), sep = "_")
+  
+  return(agx)
+}
+
+
+
+factor_cols <- 
+
+#check numeric columns for effective encoding of categorical features
+
+#seperate numeric and character columns
+
+tmp_numr <- tmp[ , sapply(tmp, is.numeric)]
+
+tmp_char <- tmp[ , sapply(tmp, is.character)]
+
+cat("Numerical Column Count", length(names(tmp_numr)),"\n", 
+    
+    "Character column count", length(names(tmp_char)))
+
+#check for number of unique elements per column_character
+
+str(lapply(tmp_char, unique ), vec.len = 3)
+
+
+#check for number of unique elements per column_numeric
+
+str(lapply(tmp, unique ), vec.len = 3, list.len = 900)
+
+
+tmp[is.na(tmp)] <- -9999999
+
+
+feature.names <- names(tmp)
+
+for (f in feature.names) {
+  
+  if (class(tmp[[f]])=="character") {
+    
+    levels <- unique((tmp[[f]]))
+    
+    tmp[[f]] <- as.integer(factor(tmp[[f]], levels=levels))
+    
+  }
+  
+}
+
+
+train <-  tmp[c(1:nrow(train)), ]
+
+test <- tmp[((nrow(train) +1) : nrow(tmp)), ]
+
+dim(train); dim(test)
+
+gc()
+
+
+split <- createDataPartition(train_target, p = .75, list = FALSE)
+
+response <- train_target
+
+training <- train[ split,]
+
+testing  <- train[-split,]
+
+response_testing <-  response[-split]
+
+sapply(names, function(x) names(tmp)[x])
+response_training <- response[split]
+
+dtrain <- xgb.DMatrix(data.matrix(training[,feature.names]), label= response_training)
+
+dval <- xgb.DMatrix(data.matrix(testing[,feature.names]), label= response_testing)
+
+watchlist <- list(train = dtrain, test = dval)
+
+param <- list(  objective   = "binary:logistic", 
+                
+                eta                 = 0.014,
+                
+                max_depth           = 10,
+                
+                subsample           = 0.7,
+                
+                colsample_bytree    = 0.7,
+                
+                eval_metric         = "auc"
+)
+
+
+
+clf_first <- xgb.train( params = param, 
+                        
+                        data                = dtrain, 
+                        
+                        nrounds             = 1000,
+                        
+                        verbose             = 2, 
+                        
+                        watchlist = watchlist,
+                        
+                        nthread = 2,
+                        
+                        maximize = TRUE)
+
+submission <- data.frame(ID=test_ID)
+
+submission$target <- NA 
+
+submission[,"target"] <- predict(clf_first, data.matrix(test[,feature.names]))
+
+write_csv(submission, "10032015.csv")
+

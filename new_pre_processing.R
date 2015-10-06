@@ -126,24 +126,46 @@ dim(tmp); dim(tmp_date)
 
 gc()
 
-nzv <- nearZeroVar(tmp)
+  nzv <- nearZeroVar(tmp)
 
-tmp <- tmp[, -nzv]
+nzv <- read_csv("nzv.csv")
+
+tmp <- tmp[, -nzv$nzv]
 
 ##########################################################################################
 
 #Better encoding of categorical variables
 
-imp_feature <- read_csv("D:/kaggle/Springleaf/xgb_featureImp.csv")
+#imp_feature <- read_csv("D:/kaggle/Springleaf/xgb_featureImp.csv")
 
-names <- (imp_feature$Feature)[1:100]
+imp_feature <- read_csv("D:/kaggle/Springleaf/imp_1000.csv")
 
-imp_names <- sapply(names, function(x) names(tmp)[x])
+#names <- (imp_feature$Feature)
 
-tmp_imp <- tmp[c(1:1000) , (names(tmp) %in% imp_names)]
+names <- names(imp_feature)
 
-write_csv(tmp_imp, "imp_1000.csv")
+#imp_names <- sapply(names, function(x) names(tmp)[x])
 
+#tmp_imp <- tmp[ 1:100 , (names(tmp) %in% imp_names)]
+
+tmp_imp <- tmp[  , (names(tmp) %in% names)]
+
+#write_csv(tmp_imp, "imp_1000.csv")
+
+for(i in 1:43){
+  
+  tmp_imp[, i] <- as.factor(tmp_imp[, i])
+}
+
+tmp_imp$VAR_0543 <- NULL; tmp_imp$VAR_0704 <- NULL; tmp_imp$VAR_0920 <- NULL
+
+tmp_imp$VAR_1087 <- NULL; tmp_imp$VAR_0891 <- NULL; tmp_imp$VAR_0908 <- NULL
+
+tmp_imp$VAR_0887 <- NULL; tmp_imp$VAR_0298 <- NULL; tmp_imp$VAR_0318 <- NULL
+
+tmp_imp$VAR_1494 <- NULL; tmp_imp$VAR_0608 <- NULL; tmp_imp$VAR_0330 <- NULL
+
+tmp_imp$VAR_1247 <- NULL; tmp_imp$VAR_0073 <- NULL
 ############################################################################################
 
 #Group by function;select columns to apply function and also the interaction degrees
@@ -178,17 +200,46 @@ groupData <- function(xmat, Degree){
   return(agx)
 }
 
+############################################################################################
+
+tmp_imp_2 <- groupData(tmp_imp, 1)
+
+#dim(tmp_imp_2)
+
+dummies <- dummyVars(~ ., data = tmp_imp_1)
+
+tmp_imp_1 <- predict(dummies, newdata = tmp_imp_1)
+
+tmp_imp_1 <- cbind.data.frame(tmp_imp_cpy$VAR_0241, tmp_imp_cpy$VAR_1934, tmp_imp_cpy$VAR_0001) 
 
 
-factor_cols <- 
+tmp_imp_1 <- model.matrix( ~ ., data = tmp_imp_1)
 
-#check numeric columns for effective encoding of categorical features
+gc()
+
+rm(nzv); rm(test); rm(test_imp); rm(tmp); rm(tmp_date); rm(tmp_pre_pred)
+
+rm(train); rm(datecolumns); rm(train_target); rm(train_ID); rm(test_ID);rm(names)
+
+rm(tmp_Imp)
+
+test_imp_2d <- predict(dummies_test, newdata = test_imp_2)
+
+
+
+##############################################################################
+
+tmp_new <- cbind(tmp, tmp_imp)
+
+rm(tmp); rm(tmp_date); rm(tmp_imp); rm(tmp_imp_2); rm(tmp_imp_2d)
+
+#testing step to check fr fixing cat. vars
 
 #seperate numeric and character columns
 
-tmp_numr <- tmp[ , sapply(tmp, is.numeric)]
+tmp_numr <- tmp_new[ , sapply(tmp_new, is.numeric)]
 
-tmp_char <- tmp[ , sapply(tmp, is.character)]
+tmp_char <- tmp_new[ , sapply(tmp_new, is.character)]
 
 cat("Numerical Column Count", length(names(tmp_numr)),"\n", 
     
@@ -196,35 +247,37 @@ cat("Numerical Column Count", length(names(tmp_numr)),"\n",
 
 #check for number of unique elements per column_character
 
-str(lapply(tmp_char, unique ), vec.len = 3)
+#str(lapply(tmp_char, unique ), vec.len = 3)
 
 
 #check for number of unique elements per column_numeric
 
-str(lapply(tmp, unique ), vec.len = 3, list.len = 900)
+#str(lapply(tmp, unique ), vec.len = 3, list.len = 900)
 
 
-tmp[is.na(tmp)] <- -9999999
+tmp_new[is.na(tmp_new)] <- -9999999
 
 
-feature.names <- names(tmp)
+feature.names <- names(tmp_new)
 
 for (f in feature.names) {
   
-  if (class(tmp[[f]])=="character") {
+  if (class(tmp_new[[f]])=="character") {
     
-    levels <- unique((tmp[[f]]))
+    levels <- unique((tmp_new[[f]]))
     
-    tmp[[f]] <- as.integer(factor(tmp[[f]], levels=levels))
+    tmp_new[[f]] <- as.integer(factor(tmp_new[[f]], levels=levels))
     
   }
   
 }
 
 
-train <-  tmp[c(1:nrow(train)), ]
+##############################################################################
 
-test <- tmp[((nrow(train) +1) : nrow(tmp)), ]
+train <-  tmp_new[c(1:nrow(train)), ]
+
+test <- tmp_new[((nrow(train) +1) : nrow(tmp_new)), ]
 
 dim(train); dim(test)
 
@@ -241,7 +294,6 @@ testing  <- train[-split,]
 
 response_testing <-  response[-split]
 
-sapply(names, function(x) names(tmp)[x])
 response_training <- response[split]
 
 dtrain <- xgb.DMatrix(data.matrix(training[,feature.names]), label= response_training)
@@ -254,7 +306,7 @@ param <- list(  objective   = "binary:logistic",
                 
                 eta                 = 0.014,
                 
-                max_depth           = 10,
+                max_depth           = 11,
                 
                 subsample           = 0.7,
                 
@@ -269,7 +321,7 @@ clf_first <- xgb.train( params = param,
                         
                         data                = dtrain, 
                         
-                        nrounds             = 1000,
+                        nrounds             = 2000,
                         
                         verbose             = 2, 
                         
@@ -285,5 +337,5 @@ submission$target <- NA
 
 submission[,"target"] <- predict(clf_first, data.matrix(test[,feature.names]))
 
-write_csv(submission, "10032015.csv")
+write_csv(submission, "10042015.csv")
 

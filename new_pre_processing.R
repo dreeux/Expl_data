@@ -165,7 +165,7 @@ tmp_imp$VAR_0887 <- NULL; tmp_imp$VAR_0298 <- NULL; tmp_imp$VAR_0318 <- NULL
 
 tmp_imp$VAR_1494 <- NULL; tmp_imp$VAR_0608 <- NULL; tmp_imp$VAR_0330 <- NULL
 
-tmp_imp$VAR_1247 <- NULL; tmp_imp$VAR_0073 <- NULL
+tmp_imp$VAR_1247 <- NULL; tmp_imp$VAR_0073 <- NULL; tmp_imp$VAR_0241 <- NULL
 ############################################################################################
 
 #Group by function;select columns to apply function and also the interaction degrees
@@ -206,9 +206,9 @@ tmp_imp_2 <- groupData(tmp_imp, 1)
 
 #dim(tmp_imp_2)
 
-dummies <- dummyVars(~ ., data = tmp_imp_1)
+dummies <- dummyVars(~ ., data = tmp_imp)
 
-tmp_imp_1 <- predict(dummies, newdata = tmp_imp_1)
+tmp_imp <- predict(dummies, newdata = tmp_imp)
 
 tmp_imp_1 <- cbind.data.frame(tmp_imp_cpy$VAR_0241, tmp_imp_cpy$VAR_1934, tmp_imp_cpy$VAR_0001) 
 
@@ -304,13 +304,13 @@ watchlist <- list(train = dtrain, test = dval)
 
 param <- list(  objective   = "binary:logistic", 
                 
-                eta                 = 0.014,
+                eta                 = 0.005,
                 
                 max_depth           = 11,
                 
                 subsample           = 0.7,
                 
-                colsample_bytree    = 0.7,
+                colsample_bytree    = 0.35,
                 
                 eval_metric         = "auc"
 )
@@ -321,7 +321,7 @@ clf_first <- xgb.train( params = param,
                         
                         data                = dtrain, 
                         
-                        nrounds             = 2000,
+                        nrounds             = 1000,
                         
                         verbose             = 2, 
                         
@@ -337,5 +337,32 @@ submission$target <- NA
 
 submission[,"target"] <- predict(clf_first, data.matrix(test[,feature.names]))
 
-write_csv(submission, "10042015.csv")
+write_csv(submission, "10072015.csv")
 
+#############################################################################
+ptrain = predict(clf_first, dtrain, outputmargin = T)
+
+setinfo(dtrain, "base_margin", ptrain)
+
+
+clf_first_1 <- xgb.train( params = param, 
+                          
+                          data                = dtrain, 
+                          
+                          nrounds             = 1000,
+                          
+                          verbose             = 2, 
+                          
+                          watchlist = watchlist,
+                          
+                          nthread = 2,
+                          
+                          maximize = TRUE)
+
+submission <- data.frame(ID=test_ID)
+
+submission$target <- NA 
+
+submission[,"target"] <- predict(clf_first_1, data.matrix(test[,feature.names]))
+
+write_csv(submission, "10072015_1.csv")

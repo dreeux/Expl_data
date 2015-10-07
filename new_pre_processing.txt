@@ -105,11 +105,11 @@ for(i in 1:16){
 }
 
 
-tmp_pre <-  preProcess(tmp_date[ , c(1:16)], method = ("BoxCox"))
+tmp_pre <-  preProcess(tmp_date, method = ("BoxCox"))
 
-tmp_pre_pred <- predict(tmp_pre, tmp_date[ , c(1:16)])
+tmp_pre_pred <- predict(tmp_pre, tmp_date)
 
-tmp_date[ , c(1:16)] <- tmp_pre_pred
+tmp_date <- tmp_pre_pred
 
 
 

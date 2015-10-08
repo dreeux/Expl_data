@@ -124,8 +124,6 @@ dim(tmp); dim(tmp_date)
 
 gc()
 
-#nzv <- nearZeroVar(tmp)
-
 nzv <- read_csv("nzv.csv")
 
 tmp <- tmp[ , -nzv$nzv]
@@ -141,16 +139,40 @@ for(i in 1:len){
 
 if(length(table(tmp[[i]])) < 100 ){
 
-names[i] = c(tmp[i])
+names[i] = names(tmp)[i]
 
 }
 
 }
+
+names = names[names != 0]
+
+length(names)
 
 tmp_factors = tmp[ ,(names(tmp) %in% names)]
 
+len = length(names)
 
-dummies <- dummyVars(~ ., data = tmp_factors)
+for(i in 1:len) {
+
+tmp_factors[ , i] <- as.factor( tmp_factors[ , i])
+
+}
+
+##########################################################################################
+
+imp_feature <- read_csv("D:/kaggle/Springleaf/xgb_featureImp.csv")
+
+
+imp_names <- (imp_feature$Feature)
+
+imp_names <- sapply(imp_names, function(x) names(tmp)[x])
+
+tmp_factors <- tmp_factors[ , (names(tmp_factors) %in% imp_names[1:1000])
+
+#need to rm , #large memory footprint
+
+dummies <- dummyVars( ~ ., data = tmp_factors)
 
 tmp_factors <- predict(dummies, newdata = tmp_factors)
 
@@ -158,49 +180,17 @@ tmp_factors <- predict(dummies, newdata = tmp_factors)
 tmp_new = cbind.data.frame(tmp, tmp_factors)
 
 
+#tmp_imp$VAR_0543 <- NULL; tmp_imp$VAR_0704 <- NULL; tmp_imp$VAR_0920 <- NULL
 
-##########################################################################################
+#tmp_imp$VAR_1087 <- NULL; tmp_imp$VAR_0891 <- NULL; tmp_imp$VAR_0908 <- NULL
 
-imp_feature <- read_csv("D:/kaggle/Springleaf/xgb_featureImp.csv")
+#tmp_imp$VAR_0887 <- NULL; tmp_imp$VAR_0298 <- NULL; tmp_imp$VAR_0318 <- NULL
 
+#tmp_imp$VAR_1494 <- NULL; tmp_imp$VAR_0608 <- NULL; tmp_imp$VAR_0330 <- NULL
 
-names <- (imp_feature$Feature)
-
-
-
-imp_names <- sapply(names, function(x) names(tmp)[x])
-
-
-tmp_imp <- tmp[  , (names(tmp) %in% names)]
-
-
-for(i in 1:43){
-  
-  tmp_imp[, i] <- as.factor(tmp_imp[, i])
-}
-
-
-
-
-
-
-tmp_imp$VAR_0543 <- NULL; tmp_imp$VAR_0704 <- NULL; tmp_imp$VAR_0920 <- NULL
-
-tmp_imp$VAR_1087 <- NULL; tmp_imp$VAR_0891 <- NULL; tmp_imp$VAR_0908 <- NULL
-
-tmp_imp$VAR_0887 <- NULL; tmp_imp$VAR_0298 <- NULL; tmp_imp$VAR_0318 <- NULL
-
-tmp_imp$VAR_1494 <- NULL; tmp_imp$VAR_0608 <- NULL; tmp_imp$VAR_0330 <- NULL
-
-tmp_imp$VAR_1247 <- NULL; tmp_imp$VAR_0073 <- NULL; tmp_imp$VAR_0241 <- NULL
+#tmp_imp$VAR_1247 <- NULL; tmp_imp$VAR_0073 <- NULL; tmp_imp$VAR_0241 <- NULL
 
 ############################################################################################
-
-
-dummies <- dummyVars(~ ., data = tmp_imp)
-
-tmp_imp <- predict(dummies, newdata = tmp_imp)
-
 
 rm(nzv); rm(test); rm(test_imp); rm(tmp); rm(tmp_date); rm(tmp_pre_pred)
 
@@ -208,11 +198,7 @@ rm(train); rm(datecolumns); rm(train_target); rm(train_ID); rm(test_ID);rm(names
 
 rm(tmp_Imp)
 
-
 ##############################################################################
-
-tmp_new <- cbind(tmp, tmp_imp)
-
 
 rm(tmp); rm(tmp_date); rm(tmp_imp); rm(tmp_imp_2); rm(tmp_imp_2d)
 
@@ -290,9 +276,12 @@ clf_first <- xgb.train( params = param,
                         
                         watchlist = watchlist,
                         
-                        nthread = 2,
+                        nhtread = 2,
                         
                         maximize = TRUE)
+
+
+xgb.save(model = clf_first, fname = "10072015xgb" )
 
 submission <- data.frame(ID=test_ID)
 
@@ -303,20 +292,22 @@ submission[,"target"] <- predict(clf_first, data.matrix(test[,feature.names]))
 write_csv(submission, "10072015.csv")
 
 #############################################################################
+#If restarted
+
+xgb.load("10072015xgb")
+
 ptrain = predict(clf_first, dtrain, outputmargin = T)
 
 setinfo(dtrain, "base_margin", ptrain)
 
 
-clf_first_1 <- xgb.train( params = param, 
+clf_first_1 <- xgboost( params = param, 
                           
                           data                = dtrain, 
                           
                           nrounds             = 1000,
                           
-                          verbose             = 2, 
-                          
-                          watchlist = watchlist,
+                          verbose             = 2,
                           
                           nthread = 2,
                           

@@ -1,8 +1,6 @@
 
 x <-  c("start  of the first step", "Reading in the data"); cat(x, sep = "\n")
 
-rm(list = ls())
-
 library(readr); library(xgboost); library(caret); library(lubridate)
 
 library(doParallel); library(caret); library(sqldf)
@@ -90,14 +88,14 @@ names(tmp_date)[(51:52)] <- paste0("Dzones_", names(tmp_date)[(15:16)])
 
 #plot histogram of dates
 
-par(mar = c(2,2,2,2),mfrow = c(4,4))
+#par(mar = c(2,2,2,2),mfrow = c(4,4))
 
-for (i in 1:16) {
+#for (i in 1:16) {
   
-  hist( tmp_date[,i], "weeks" ,format = "%d %b %y", main = names(tmp_date[,i]),
+  #hist( tmp_date[,i], "weeks" ,format = "%d %b %y", main = names(tmp_date[,i]),
     
-        xlab = "", ylab = "")
-  }
+   #     xlab = "", ylab = "")
+  #}
 
 for (i in 1:16) {
   
@@ -369,26 +367,6 @@ tmp_new = cbind.data.frame(tmp, tmp_factors, tmp_count)
 
 #leave one out average left out
 
-################################################################################                
-#need to rm , #large memory footprint
-
-dummies <- dummyVars( ~ ., data = tmp_factors)
-                
-tmp_factors <- predict(dummies, newdata = tmp_factors)
-                
-tmp_new = cbind.data.frame(tmp, tmp_factors)
-                
-                
-#tmp_imp$VAR_0543 <- NULL; tmp_imp$VAR_0704 <- NULL; tmp_imp$VAR_0920 <- NULL
-                
-#tmp_imp$VAR_1087 <- NULL; tmp_imp$VAR_0891 <- NULL; tmp_imp$VAR_0908 <- NULL
-                
-#tmp_imp$VAR_0887 <- NULL; tmp_imp$VAR_0298 <- NULL; tmp_imp$VAR_0318 <- NULL
-                
-#tmp_imp$VAR_1494 <- NULL; tmp_imp$VAR_0608 <- NULL; tmp_imp$VAR_0330 <- NULL
-                
-#tmp_imp$VAR_1247 <- NULL; tmp_imp$VAR_0073 <- NULL; tmp_imp$VAR_0241 <- NULL
-                
 ############################################################################################
                 
 rm(nzv); rm(test); rm(test_imp); rm(tmp); rm(tmp_date); rm(tmp_pre_pred)
@@ -431,7 +409,7 @@ dim(train); dim(test)
 gc()
                 
                 
-split <- createDataPartition(train_target, p = .75, list = FALSE)
+split <- createDataPartition(train_target, p = .9, list = FALSE)
                 
 response <- train_target
                 
@@ -489,7 +467,7 @@ submission$target <- NA
                 
 submission[,"target"] <- predict(clf_first, data.matrix(test[,feature.names]))
                 
-write_csv(submission, "10092015.csv")
+write_csv(submission, "10122015.csv")
                 
 #############################################################################
 #If restarted

@@ -279,19 +279,20 @@ for (i in 1:len) {
   
 }
 
-
-#tmp_count <- data.frame(id = 1:dim(tmp)[1])
+tmp_count <- data.frame(id = 1:dim(tmp)[1])
 
 for(i in 1:dim(nms_df)[2]){
   
-i=1
+
     #new df 
  
-  print(nms_df[1,i], nms_df[2,i])
+  print(i / dim(nms_df)[2])
   
   tmp_count[, paste(i, "_two", sep="")] <- my.f2cnt(th2 = tmp, 
                                                     
-                                            vn1 = "nms_df[1,i]", vn2 = "nms_df[2,i]" )
+                                                    vn1 = nms_df[1,i], 
+                                                    
+                                                    vn2 = nms_df[2,i] )
 
 }
 
@@ -302,21 +303,34 @@ nms <- combn(names(tmp_factors), 3)
 
 dim(nms)
 
-nms_df <- data.frame(nms) 
+nms_df <- data.frame(nms); nms_df <- nms_df[ c(1:3), c(1:100)]
+
+
+len = length(names(nms_df))
+
+for (i in 1:len) {
+  
+  print((i / len) * 100)
+  
+  nms_df[, i] <- as.character(nms_df[, i])
+  
+}
 
 for(i in 1:dim(nms_df)[2]){
   
-  vn1 = nms_df[1,i]
+#new df 
   
-  vn2 = nms_df[2,i]
+  print((i / dim(nms_df)[2]) * 100)
+
+  tmp_count[, paste(i, "_three", sep="")] <- my.f3cnt(th2 = tmp, 
+                                                    
+                                                    vn1 = nms_df[1,i], 
+                                                    
+                                                    vn2 = nms_df[2,i], 
+                                                    
+                                                    vn3 = nms_df[3,i])
   
-  vn3 = nms_df[3, i]
-  
-  #new df 
-  
-  tmp_count$three_i <- my.f3cnt(th2 = tmp, vn1 = vn1, vn2 = vn2, vn3 = vn3 )
-  
-}
+  }
 
 
 #one way count
@@ -325,7 +339,7 @@ for(i in 1:dim(nms_df)[2]){
 for(i in 1:44){
   
   
-    print(names(tmp_factors)[i])
+    print((i / 44) * 100 )
     
     tmp_factors$x <- tmp_factors[, i]
     
@@ -339,13 +353,28 @@ for(i in 1:44){
   
     }  
 
+#need to convert all of tmp_factors to numeric
+
+len = length(names(tmp_factors))
+
+for (i in 1:len) {
+  
+  tmp_factors[, i] <- as.numeric(tmp_factors[, i])
+  
+}
+
+#############################################################################
+
+tmp_new = cbind.data.frame(tmp, tmp_factors, tmp_count)
+
+#leave one out average left out
+
 ################################################################################                
 #need to rm , #large memory footprint
 
 dummies <- dummyVars( ~ ., data = tmp_factors)
                 
 tmp_factors <- predict(dummies, newdata = tmp_factors)
-                
                 
 tmp_new = cbind.data.frame(tmp, tmp_factors)
                 

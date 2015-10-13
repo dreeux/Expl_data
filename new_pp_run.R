@@ -5,8 +5,6 @@ library(readr); library(xgboost); library(caret); library(lubridate)
 
 library(doParallel); library(caret); library(sqldf)
 
-
-
 set.seed(867530099)
 
 train <- read_csv("D:/kaggle/Springleaf/DATA/CSV/train.csv")
@@ -284,7 +282,7 @@ for(i in 1:dim(nms_df)[2]){
 
     #new df 
  
-  print(i / dim(nms_df)[2])
+  print(paste0(((i / dim(nms_df)[2]), "%"))
   
   tmp_count[, paste(i, "_two", sep="")] <- my.f2cnt(th2 = tmp, 
                                                     
@@ -308,7 +306,7 @@ len = length(names(nms_df))
 
 for (i in 1:len) {
   
-  print((i / len) * 100)
+  print(paste0(((i / len) * 100), "%"))
   
   nms_df[, i] <- as.character(nms_df[, i])
   
@@ -318,7 +316,7 @@ for(i in 1:dim(nms_df)[2]){
   
 #new df 
   
-  print((i / dim(nms_df)[2]) * 100)
+  print(paste0(((i / dim(nms_df)[2]) * 100), "%"))
 
   tmp_count[, paste(i, "_three", sep="")] <- my.f3cnt(th2 = tmp, 
                                                     
@@ -337,7 +335,7 @@ for(i in 1:dim(nms_df)[2]){
 for(i in 1:44){
   
   
-    print((i / 44) * 100 )
+    print(paste0(((i / 44) * 100), "%") )
     
     tmp_factors$x <- tmp_factors[, i]
     

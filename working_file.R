@@ -1,10 +1,8 @@
 library(readr)
-
+ 
 library(xgboost)
 
 set.seed(28071993)
-
-cat("reading the train and test data\n")
 
 train <- read_csv("D:/kaggle/Forecasting/DATA/train.csv")
 
@@ -12,33 +10,13 @@ test  <- read_csv("D:/kaggle/Forecasting/DATA/test.csv")
 
 store <- read_csv("D:/kaggle/Forecasting/DATA/store.csv")
 
-# removing the date column (since elements are extracted) and also StateHoliday which has a lot of NAs (may add it back in later)
-
 train <- merge(train,store)
 
 test <- merge(test,store)
 
-# There are some NAs in the integer columns so conversion to zero
+train[is.na(train)]   <- 0
 
-train[is.na(train)]   <- -1
-
-test[is.na(test)]   <- -1
-
-names(train)
-
-str(train)
-
-summary(train)
-
-names(test)
-
-str(test)
-
-summary(test)
-
-# looking at only stores that were open in the train set
-
-# may change this later
+test[is.na(test)]   <- 0
 
 train <- train[ which(train$Open=='1'),]
 
@@ -53,8 +31,6 @@ train$year <- as.integer(format(train$Date, "%y"))
 train$day <- as.integer(format(train$Date, "%d"))
 
 # removing the date column (since elements are extracted) and also StateHoliday which has a lot of NAs (may add it back in later)
-
-train <- train[,-c(3,8)]
 
 # seperating out the elements of the date column for the test set
 
@@ -72,8 +48,6 @@ feature.names <- names(train)[c(1,2,5:19)]
 
 feature.names
 
-cat("assuming text variables are categorical & replacing them with numeric ids\n")
-
 for (f in feature.names) {
 
     if (class(train[[f]])=="character") {
@@ -85,79 +59,62 @@ for (f in feature.names) {
         test[[f]]  <- as.integer(factor(test[[f]],  levels=levels))
   }
 }
- 
-response <- train$Sales
 
-train$Sales <- NULL
-
-split = createDataPartition(train_target, p = 0.9, list = F)
-
-response_val <- response[-split]
-
-response_train <- response[split]
-
-tmp <- train[,feature.names]
-
-dval <- xgb.DMatrix(data=data.matrix(tmp[-split, ]), label = log(response_val+1))
-
-dtrain <- xgb.DMatrix(data=data.matrix(tmp[split, ]), label = log(response_train+1))
-
-watchlist<-list(val=dval,train=dtrain)
+tra<-train[,feature.names]
 
 RMPSE<- function(preds, dtrain) {
 
     labels <- getinfo(dtrain, "label")
   
-    elab <- exp(as.numeric(labels))-1
+    elab<-exp(as.numeric(labels))-1
   
-    epreds <- exp(as.numeric(preds))-1
+    epreds<-exp(as.numeric(preds))-1
   
     err <- sqrt(mean((epreds/elab-1)^2))
   
     return(list(metric = "RMPSE", value = err))
 }
 
+split = createDataPartition(train$Sales, p = 0.9, list = F)
+
+response <- train$Sales
+
+response_val <- response[-split]
+
+response_train <- response[split]
+
+dval <- xgb.DMatrix(data=data.matrix(tra[-split, ]), label = log(response_val+1))
+
+dtrain<-xgb.DMatrix(data=data.matrix(tra[split, ]), label = log(response_train+1))
+
+watchlist<-list(val=dval,train=dtrain)
+
 param <- list(  objective           = "reg:linear", 
-                
                 booster = "gbtree",
-                
-                eta                 = 0.01, 
-                
-                max_depth           = 20, 
-                
-                subsample           = 0.7, 
-                
-                colsample_bytree    = 0.7 
-                
+                eta                 = 0.025, # 0.06, #0.01,
+                max_depth           = 10, #changed from default of 8
+                subsample           = 0.9, # 0.7
+                colsample_bytree    = 0.7 # 0.7
+                #num_parallel_tree   = 2
                 # alpha = 0.0001, 
-                
                 # lambda = 1
 )
 
 cl <- makeCluster(2); registerDoParallel(cl)
 
 clf <- xgb.train(   params              = param, 
-                    
                     data                = dtrain, 
-                    
-                    nrounds             = 1000, #300, #280, #125, #250, # changed from 300
-                    
-                    verbose             = 1,
-                    
-                    nthread             = 2,
-                    
-                    early.stop.round    = 30,
-                    
+                    nrounds             = 3000, #300, #280, #125, #250, # changed from 300
+                    verbose             = 2,
+#                    early.stop.round    = 100,
                     watchlist           = watchlist,
-                    
-                    maximize            = FALSE,
-                    
+                    maximize            = T,
                     feval=RMPSE
 )
 
+pred1 <- exp(predict(clf, data.matrix(test[,feature.names]))) -1
 
-pred <- exp(predict(clf, data.matrix(test[,feature.names]))) -1
+submission <- data.frame(Id=test$Id, Sales=pred1)
 
-submission <- data.frame(Id=test$Id, Sales=pred)
 
-write_csv(submission, "D:/kaggle/Forecasting/submission/1022015.csv")
+write_csv(submission, "rf1.csv")

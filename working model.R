@@ -1,196 +1,113 @@
-NewsTrain_1 <- read.csv("C:/Users/amulya/Desktop/edx/NYTimesBlogTrain.csv", na.strings="")
+library(data.table)
+library(zoo)
+library(forecast)
+library(ggplot2)
+library(dplyr)
 
-NewsTest_1 <- read.csv("C:/Users/amulya/Desktop/edx/NYTimesBlogTest.csv", na.strings="")
+test <- fread("C:/Users/amulya/Documents/Kaggle/forecast/test.csv")
 
-require(lubridate)
+train <- fread("C:/Users/amulya/Documents/Kaggle/forecast/train.csv")
 
-require(dplyr)
+store <- fread("C:/Users/amulya/Documents/Kaggle/forecast/store.csv")
 
-require(mice)
+str(train)
 
-remov = select(NewsTrain_1, -Popular)
+str(test)
 
-new = rbind(remov, NewsTest_1)
+str(store)
 
-impute = new[c("NewsDesk", "SectionName", "SubsectionName")]
+train[, Date := as.Date(Date)]
 
-set.seed(123)
+test[, Date := as.Date(Date)]
 
-imputed_1 = complete(mice(impute)) #should be converted to factors
+train <- train[order(Date)]
 
-new$NewsDesk = imputed_1$NewsDesk
+test <- test[order(Date)]
 
-new$SectionName = imputed_1$SectionName
+#combine data
 
-new$SubsectionName = imputed_1$SubsectionName
+train <- data.frame(train) ; test <- data.frame(test)
 
-new$Headline = as.character(new$Headline)
+train <- left_join(train, store, by = "Store")
 
-new$Abstract = as.character(new$Abstract)
+train <- filter(train, Open == 1) 
 
-new$Snippet = as.character(new$Snippet)
+#################################################################################################
 
-new$PubDate = ymd_hms(new$PubDate)
+#Multiplot function
 
-new$weekday = wday(new$PubDate, label = T)
+ggplot(train, aes( x = Customers, y =Sales)) + 
+  geom_point() + labs(title = "Customers and Sales")
 
-new$hour = hour(new$PubDate)
+ggplot(train, aes(x = Customers, y = Sales)) + 
+  geom_point(aes(colour = StoreType)) + labs(title = "Customers and Sales")
 
-new$minute = minute(new$PubDate)
+ggplot(train, aes(x = Customers, y = Sales)) + 
+  geom_point(aes(colour = factor(DayOfWeek))) + labs(title = "Customers and Sales")
 
-NewsTrain = new[1:6532, ];NewsTest = new[6533:8402,]
+ggplot(train, aes(x = Customers, y = Sales)) + 
+  geom_point(aes(colour = factor(Assortment))) + labs(title = "Customers and Sales")
 
-levels(NewsTest$NewsDesk) = levels(NewsTrain$NewsDesk)
+ggplot(train, aes(x = Customers, y = Sales)) + 
+  geom_point(aes(colour = factor(Promo), shape = factor(StoreType))) + 
+  labs(title = "Customers and Sales")
 
-levels(NewsTest$SectionName) = levels(NewsTrain$SectionName)
+ggplot(train, aes(x = Customers, y = Sales)) + 
+  geom_point(aes(colour = StateHoliday)) + labs(title = "Customers and Sales")
 
-levels(NewsTest$SubsectionName) = levels(NewsTrain$SubsectionName)
+ggplot(train, aes(x = Customers, y = Sales)) + 
+  geom_point(aes(colour = PromoInterval)) + labs(title = "Customers and Sales")
 
-library(tm)
 
-CorpusHeadline = Corpus(VectorSource(c(NewsTrain$Headline, NewsTest$Headline)))
 
-CorpusHeadline = tm_map(CorpusHeadline, tolower)
+################################################################################################
 
-CorpusHeadline = tm_map(CorpusHeadline, PlainTextDocument)
-
-CorpusHeadline = tm_map(CorpusHeadline, removePunctuation)
-
-CorpusHeadline = tm_map(CorpusHeadline, removeWords, stopwords("english"))
-
-CorpusHeadline = tm_map(CorpusHeadline, stemDocument)
-
-dtm = DocumentTermMatrix(CorpusHeadline)
-
-sparse = removeSparseTerms(dtm, 0.995)
-
-HeadlineWords = as.data.frame(as.matrix(sparse))
-
-colnames(HeadlineWords) = make.names(colnames(HeadlineWords))
-
-HeadlineWords$PubDate = new$PubDate
-
-HeadlineWords$weekday = new$weekday
-
-HeadlineWords$hour = new$hour
-
-HeadlineWords$NewsDesk = new$NewsDesk
-
-HeadlineWords$SectionName = new$SectionName
-
-HeadlineWords$SubsectionName = new$SubsectionName
-
-HeadlineWords$WordCount = log(new$WordCount)
-
-HeadlineWordsTrain = head(HeadlineWords, nrow(NewsTrain))
-
-HeadlineWordsTest = tail(HeadlineWords, nrow(NewsTest))
-
-HeadlineWordsTrain$Popular = NewsTrain_1$Popular
-
-library(plyr)
-
-HeadlineWordsTrain$Popular = as.factor(HeadlineWordsTrain$Popular)
-
-HeadlineWordsTrain$Popular = revalue(HeadlineWordsTrain$Popular, c("0" = "Low", "1" = "High"))
-
-
-# Model training process----------------------------------------------------------------------------------
-
-ctrl <- trainControl(method = "repeatedcv", repeats = 1, classProbs = TRUE ,
-
-                     summaryFunction = twoClassSummary )
-
-plsFit <- train(Popular ~ .,data = HeadlineWordsTrain,method = "gbm"
-
-,  trControl = ctrl,preProc = c("center", "scale"), metric = "ROC")
-
-
-
-
-plsFit <- randomForest(Popular ~ .,data = HeadlineWordsTrain)
-
-#prediction on the test data
-
-plsProbs <- predict(plsFit, newdata = HeadlineWordsTest, type = "prob")
-
-head(plsProbs)
-
-
-ggplot(plsFit) + scale_x_log10()
-
-# create confusion matrix
-
-#confusionMatrix(data = plsClasses, testing$Class)
-
-#resamps <- resamples(list(pls = plsFit, rda = rdaFit))
-
-#library(pROC)
-
-#rpartROC <- roc(testing$Class, rpartProbs[, "PS"],
-                  #+ levels = rev(cell_lev))
-
-plot(rpartROC, type = "S", print.thres = .5)
-
-summary(resamps)
-
-diffs <- diff(resamps)
-
-summary(diffs)
-
-xyplot(resamps, what = "BlandAltman")
-
-
-# Now we can prepare our submission file for Kaggle:
-
-MySubmission = data.frame(UniqueID = NewsTest$UniqueID, Probability1 = PredTest)
-
-write.csv(MySubmission, "SubmissionHeadlineLog.csv", row.names=FALSE)
-
-#Using SVM------------------------------------------------------------------------------------------------
-
-ctrl <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE ,
-
-                     summaryFunction = twoClassSummary )
-
-
-plsFit_svm <- train(as.factor(Popular) ~ .,data = HeadlineWordsTrain, method = "rf",
-
-                  trControl = ctrl, preProc = c("center", "scale"), metric = "ROC")
-
-system.time(plsFit_svm)
-
-plsProbs_svm <- predict(plsFit, newdata = HeadlineWordsTest, type = "prob")
-
-ggplot(plsFit_svm) + scale_x_log10()
-
-MySubmission = data.frame(UniqueID = NewsTest$UniqueID, Probability1 = plsFit_svm)
-
-write.csv(MySubmission, "3_SubmissionHeadlineLog.csv", row.names=FALSE)
-
-
-plot(plsFit_svm, metric = "ROC", scales = list(x = list(log = 2)))
-
-#comparing results from svm and gbm-----------------------------------------------------------------------
-
-resamp_values <- resamples(list(gbm = plsFit, SVM = plsFit_svm))
-
-#visualising the values
-
-dotplot(resamp_Values, metric = "ROC")
-
-
-#feature selection-------------------------------------------------------------------
-
-HeadlineWords$Q_m = ifelse(grepl("\\?", new$Headline), 1, 0)
-
-HeadlineWords$Excl_m = ifelse(grepl("\\!", new$Headline), 1, 0)
-
-HeadlineWords$sep_m = ifelse(grepl("\\-", new$Headline), 1, 0)
-
-
-
-for(i in 1:length(words)){
-  HeadlineWords$i = ifelse(grepl("i", new$Headline), 1, 0)
-   table(HeadlineWords$i)
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  
+  if (numPlots==1) {
+    print(plots[[1]])
+    
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
 }
+
+
+
+###################################################################################################

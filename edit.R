@@ -3,6 +3,34 @@ control <- trainControl(method = "cv", number = 10, verboseIter = T,
                         summaryFunction = twoClassSummary
 )
 
+In the first plot top 25 stores based on sales are shown , this trend is not observed when the same stores are compared based on revenue per customer metric
+
+
+four store types
+
+ 
+
+Completed my bachelors in mechanical engineering in 2014. Rather than core mechanical engineering subjects I was interested in subjects such as operation research which led me to takeup various moocs related to data science and I have completed
+
+ 
+
+7 coursera courses 
+
+Stanford online
+
+edx analytics edge 
+
+ 
+
+Also since my current work doesn't have scope for them I started competing on Kaggle to gain a better understanding of the topics which I learnt in those moocs
+
+ 
+
+In the Springleaf Marketing challenge, was able to finish within the top 10% range 
+
+ 
+
+In the KDD cup 2015 was able to finish within the to 25 % (
 
 grid_xgb <- expand.grid(eta = 0.001,
                         

@@ -3,6 +3,45 @@ control <- trainControl(method = "cv", number = 10, verboseIter = T,
                         summaryFunction = twoClassSummary
 )
 
+This Data is from an ongoing Kaggle competition - Rossmann Store Sales
+
+ 
+
+Here the challenge is to forecast store sales 
+
+
+{ insert here }
+
+
+Completed my under grad in Mechanical Engineering in 2014
+
+I started taking moocs on Data Science from last year and have completed
+
+ 
+
+First seven courses from the Coursera Data Science Specialization
+
+
+
+Statistical Learning- BY Standford Online
+
+The Analytics Edge | edX
+
+
+Also since my current work doesn't have scope for these concepts I started competing on Kaggle 
+
+ 
+
+A few notable results 
+
+•In the Springleaf Marketing response challenge, finished within the top 10% range  on the Private leaderboard
+
+
+
+
+•In KDD cup 2015 finished within the  Top 25 % range on the Private leaderboard
+
+
 In the first plot top 25 stores based on sales are shown , this trend is not observed when the same stores are compared based on revenue per customer metric
 
 

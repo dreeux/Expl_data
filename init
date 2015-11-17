@@ -427,3 +427,122 @@ gc()
 # or select and delete by changing to grid 
 
 # more efficient
+
+# create a csv file with : Field Name ; number of unique elements ; list of unique elem. if < 15 
+
+all_unique <- (rep(0, ncol(train)))
+
+
+for(i in 1:ncol(train)){
+  
+  all_unique[i] <- length(unique(train[[i]]))
+
+}
+
+
+all_unique <- data.frame(all_unique)
+
+all_unique$names <- names(train)
+
+value <- rep(0, ncol(train))
+
+ 
+
+  for( i in 1:ncol(train)  ) {
+    
+    if( all_unique$all_unique[i] < 15 ) {
+      
+      value[i] <- c(unique(train[[i]]))
+      
+  }
+  
+}
+
+
+################################################################################################################
+
+
+# run intial stuff for 3 rounds with all params = 1 before going all out
+
+
+dtrain <- xgb.DMatrix(data.matrix(train), label = response)
+
+
+cl <- makeCluster(4); registerDoParallel(cl) 
+
+start <- Sys.time()
+
+i = 0; j = 0; k = 0
+
+for( gamma in c(seq(1, 10, 2)){
+  
+  i = i + 1
+  
+  for(min_child_weight in c(seq(1, 10, 2)){
+    
+    j = j + 1
+    
+    for(max_delta_step in c(seq(1, 10, 2)){
+      
+      k = k + 1
+      
+      set.seed((gamma*min_child_weight*max_delta_step)*100)
+      
+      param <- list( objective = "binary:logistic", 
+                     
+                     booster = "gbtree",
+                     
+                     eval_metric = "auc",
+                     
+                     eta = 0.02, # 0.06, #0.01,
+                     
+                     max_depth = 7, #changed from default of 8
+                     
+                     subsample = 0.82, # 0.7
+                     
+                     colsample_bytree = 0.66,
+                     
+                     gamma = gamma,
+                     
+                     min_child_weight = min_child_weight,
+                     
+                     max_delta_step = max_delta_step
+                     
+                     # 0.7
+                     #num_parallel_tree   = 2
+                     # alpha = 0.0001, 
+                     # lambda = 1
+                     
+                     )
+      
+      
+      
+      clf_i_j_k <- xgb.cv(   params              = param, 
+                          
+                          data                = dtrain, 
+                          
+                          nrounds             = 1800, 
+                          
+                          verbose             = 1,  #1
+                          #early.stop.round    = 150,
+                          #watchlist           = watchlist,
+                          
+                          maximize            = FALSE,
+                          
+                          nthread = 4, 
+                       
+                          nfold = 5
+                        )
+      
+    write_csv(clf_i_j_k, paste0( "D:\\kaggle\\HOMESITE\\models\\", "clf_", i, "_", j,"_",k,".csv"))
+      
+    }
+    
+  }
+  
+}
+
+
+
+
+time_taken <- Sys.time() - start

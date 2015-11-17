@@ -428,6 +428,9 @@ gc()
 
 # more efficient
 
+############################################################################################################################
+
+
 # create a csv file with : Field Name ; number of unique elements ; list of unique elem. if < 15 
 
 all_unique <- (rep(0, ncol(train)))
@@ -444,7 +447,7 @@ all_unique <- data.frame(all_unique)
 
 all_unique$names <- names(train)
 
-value <- rep(0, ncol(train))
+value <- list(rep(0, ncol(train)))
 
  
 
@@ -452,12 +455,13 @@ value <- rep(0, ncol(train))
     
     if( all_unique$all_unique[i] < 15 ) {
       
-      value[i] <- c(unique(train[[i]]))
+      value[i] <- list(unique(train[[i]]))
       
   }
   
 }
 
+all_unique$value <- value
 
 ################################################################################################################
 

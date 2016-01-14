@@ -67,8 +67,13 @@ tmp[is.na(tmp)] <- -1
 
 row_NA <- apply(tmp, 1, function(x) sum(x == -1))
 
+row_zero <- apply(tmp, 1, function(x) sum(x == 0))
+
 
 tmp$row_NA <- row_NA
+
+tmp$row_zero <- row_zero
+
 
 
 # seperate character columns
@@ -147,7 +152,6 @@ for (f in names(tmp)) {
 # a <- lapply(tmp, function(x) length(unique(x)))
 
 
-
 high_card <- rep(0, ncol(tmp))
 
 
@@ -162,7 +166,6 @@ for(i in 1:length(a))
   }
   
 }
-
 
 
 high_card <- high_card[high_card != 0]
@@ -213,7 +216,6 @@ for (f in names(tmp_high_card)) {
 localH2O <- h2o.init(max_mem_size = "10g")
 
 train_target <- as.factor(response)
-
 
 
 
@@ -294,6 +296,8 @@ dataset_blend_train = matrix(0, nrow(tmp_high_card), 1)
 str(tmp_cont)
   
 # look for binomial transformation of features
+  
+# square and cubic transforms working well
 
 tmp_cont$Original_Quote_Date <- NULL
 
@@ -855,7 +859,7 @@ for (clf in clfs)
     
     x_test  = train[tmp_train,]
     
-    y_test  = response[tmp_train]
+    y_test  = response[tmp_train] # write a scoring method to score auc from y_test
     
     
     ### Stupid hack to fit the model

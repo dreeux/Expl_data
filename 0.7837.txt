@@ -477,3 +477,305 @@ write_csv(submission, "D:/kaggle/Springleaf/SUBMISSION/glm_09272015.csv")
 
 
 ###################################################################################################
+
+
+
+
+
+### read_data
+
+
+set.seed(02*07*2016)
+
+# read in the data file--------------------------------------------------------------------------------
+
+require(data.table); require(xgboost); require(h2o); require(caret)
+
+
+train <- fread("C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\Data\\train.csv", data.table = F)
+
+test  <- fread("C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\Data\\test.csv", data.table = F)
+
+train_id <- train$Id
+
+train$Id <- NULL;
+
+id <- test$Id; test$Id <- NULL
+
+response <- train$Response; train$Response <- NULL
+
+
+tmp <- rbind(train, test)
+
+
+row_NA <- apply(tmp, 1, function(x) sum(is.na(x)))
+
+tmp$row_NA <- row_NA
+
+
+# new feature engg found in high performing script----------------------------------------------------------
+
+first <- c()
+
+char <- as.character(tmp$Product_Info_2)
+
+for(i in 1:length(tmp$Product_Info_2))
+  
+{
+
+first[i] <- substr(char[i], 1, 1) 
+
+}
+
+
+tmp$first <- first
+
+
+second <- c()
+
+for(i in 1:length(tmp$Product_Info_2))
+  
+{
+  
+  second[i] <- substr(char[i], 2, 2) 
+  
+}
+
+
+tmp$second <- second
+
+
+# dummify varible------------------------------------------------------------------------------
+
+dummy <- c("Product_Info_2", "first", "second")
+
+tmp_dummy <- data.frame(tmp[, dummy])
+
+
+for(i in 1:ncol(tmp_dummy))
+  
+  {
+
+
+  tmp_dummy[ , i] <- as.factor(tmp_dummy[ , i])
+
+}
+
+dummies <- dummyVars( ~ ., data = tmp_dummy)
+
+gc()
+
+tmp_dummy <- predict(dummies, newdata = tmp_dummy)
+
+tmp_dummy <- data.frame(tmp_dummy)
+
+dim(tmp_dummy)
+
+
+# count the number of keywords row wise--------------------------------------------------------
+
+keywords <- paste("Medical_Keyword_", 1:48, sep="")
+
+tmp_count <- tmp[, keywords]
+
+
+count <- apply(tmp_count, 1, function(x) sum(x))
+
+tmp$count <- count
+
+
+##############################################################################################
+
+tmp[is.na(tmp)] <- -1
+
+
+# interaction features-------------------------------------------------------------------------
+
+
+tmp_int <- tmp[ , c("Ins_Age", "BMI")]
+
+for (i in 1:ncol(tmp_int)) {
+  
+  for (j in (i + 1) : (ncol(tmp_int) + 1)) {
+    
+    #    a = i; b= j
+    
+    var.x <- colnames(tmp_int)[i]
+    
+    var.y <- colnames(tmp_int)[j]
+    
+    var.new <- paste0(var.x, '_plus_', var.y)
+    
+    tmp_int[ , paste0(var.new)] <- tmp_int[, i] + tmp_int[, j]
+    
+  }
+}
+
+
+gc()
+
+
+tmp$Medical_History_10 <- NULL
+
+tmp$Medical_History_24 <- NULL
+
+
+############################################################################################################
+
+feature.names <- names(tmp)
+
+for (f in feature.names) {
+  
+  if (class(tmp[[f]])=="character") {
+    
+    levels <- unique(c(tmp[[f]]))
+    
+    tmp[[f]] <- as.integer(factor(tmp[[f]], levels=levels))
+    
+  }
+}
+
+
+tmp_new <- cbind(tmp, tmp_dummy, tmp_int)
+
+tmp_new <- tmp_new[ , !(names(tmp_new) %in% c("Product_Info_2", "first", "second"))]
+
+
+train <- tmp_new[c(1:59381),]
+
+test <- tmp_new[c(59382:79146),]
+
+require(readr)
+
+write_csv(train, "C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\Data\\train_02072016.csv")
+
+write_csv(test, "C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\Data\\test_02072016.csv")
+
+#####
+
+xgb
+
+
+# create folds------------------------------------------------------------------------------------------
+
+dataset_blend_train = matrix(0, nrow(train), 1)
+
+dataset_blend_test_j = matrix(0, nrow(test), 3)
+
+dataset_blend_test = matrix(0, nrow(test), 1)
+
+# start iteration loop---------------------------------------------------------------------------------
+# 
+# for(j in 1:5)
+#   
+# {
+  
+  j= 1
+  
+  print(paste("starting xgboost iteration ; number :", j))
+  
+  set.seed(2*07*2016*j)
+  
+  require(caret)
+  
+  skf = createFolds(response, k = 3)
+  
+  print(paste(nrow(dataset_blend_test_j),ncol(dataset_blend_test_j)))
+  
+  # start fold loop------------------------------------------------------------------------------------
+  
+  ### Loop over the folds
+  
+  i <- 0
+  
+  for (sk in skf) {
+    
+    i <- i + 1
+    
+    print(paste("Fold", i))
+    
+    ### Extract and fit the train/test section for each fold
+    
+    tmp_train <- unlist(skf[i])
+    
+    x_train = train[-tmp_train,]
+    
+    y_train = response[-tmp_train]
+    
+    x_test  = train[tmp_train,]
+    
+    y_test  = response[tmp_train]
+    
+    
+    feature.names <- names(train)
+    
+    dtrain<-xgb.DMatrix(data=data.matrix(x_train),label=y_train, missing = NaN)
+    
+#     param <- list( objective           = "count:poisson", # objective           = "reg:linear"
+#                    
+#                    depth = 21,
+#                    
+#                    min_child_weight = 3,
+#                    
+#                    subsample = 0.71,
+#                    
+#                    eta = 0.01,
+#                    
+#                    silent = 0
+#     )
+# 
+#     
+    
+    param <- list( objective           = "reg:linear", 
+                   
+                   depth = 21,
+                   
+                   min_child_weight = 3,
+                   
+                   subsample = 0.71,
+                   
+                   eta = 0.01,
+                   
+                   silent = 0
+    )    
+    
+    
+    
+    
+    # start training------------------------------------------------------------------------------
+    
+    print(paste("training xgboost for iteration :", j, "Fold ; number :", i))
+    
+    mod <- xgb.train(   params              = param,
+                        
+                        booster = "gbtree",
+                        
+                        data                = dtrain,
+                        
+                        nrounds             = 3000,
+                        
+                        verbose             = 1,
+                        
+                        maximize            = F
+                        
+    )
+    
+    dataset_blend_train[tmp_train, j] <- predict(mod, data.matrix(x_test), missing = NaN)
+    
+    
+    
+    print(paste("predicting xgboost for test set iteration:", j, " ; Fold :", i))
+    
+    dataset_blend_test_j[, i] <- predict(mod, data.matrix(test), missing = NaN)
+    
+  }
+  
+  dataset_blend_test[, j] <- rowMeans(dataset_blend_test_j)
+  
+#}
+
+require(readr)
+
+write_csv(data.frame(dataset_blend_train), "C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\blend\\bag\\xgb\\blend_train_xgb_02072016.csv")
+
+write_csv(data.frame(dataset_blend_test), "C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\blend\\bag\\xgb\\blend_test_xgb_02072016.csv")

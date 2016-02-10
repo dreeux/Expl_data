@@ -779,3 +779,48 @@ require(readr)
 write_csv(data.frame(dataset_blend_train), "C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\blend\\bag\\xgb\\blend_train_xgb_02072016.csv")
 
 write_csv(data.frame(dataset_blend_test), "C:\\Users\\amulya\\Documents\\Kaggle\\PRUDENTIAL\\blend\\bag\\xgb\\blend_test_xgb_02072016.csv")
+
+
+####################################################################################################################################
+
+
+
+1. add xgb importance and corelation to target (whatever that means)
+
+2. corelation between predictors ( interested in predictors with high corelation ) (pair wise corelation )
+   
+  hint: there is some function in CARET to check corelation between predictors, use that to filter out high corelation
+	predictors
+
+
+--------select N based on experimentation--------------------------------------------------------------------------------
+
+
+3. monotonic transformation for top N feat.
+   
+  (for each feature value we create a new feature that assigns to each value the total count of that value. 
+    
+    I.E. if Berlin is 23 times, we assign 23, if Madrid is 12 times we assign 12)
+
+
+4. interaction effects between top N features 
+    hint : use four different operations 
+
+5. class_mean : [for each selected column (top10) we create a new feature whose values are the mean of the class 
+                
+                (quote conversion flag) of that respective value]
+
+6. Different input data (counts, all numeric, all categorical , mixed etc)
+
+7. Ensembling some XGB variations of model parameters, seeds, different feature engineering 
+
+
+
+Find the interactions which added most to target correlation. 
+
+Ie. Check the correlation of each individual column to the target, then try the combination of both columns 
+
+(using + - * / ) and see if the resulting interaction column increased the correlation. 
+
+Filter down to approx 50 new columns giving the highest bump in correlation to target. 
+  

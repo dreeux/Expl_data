@@ -824,3 +824,28 @@ Ie. Check the correlation of each individual column to the target, then try the 
 
 Filter down to approx 50 new columns giving the highest bump in correlation to target. 
   
+
+#####################################################################################################################################
+
+
+monotonic transformation for top N features
+
+
+for()
+
+count of vars 
+
+group by column_name
+
+##########################################################################################################
+
+class_mean()
+
+
+for()
+
+sum of response 
+
+group by column_name
+
+###############################################################################################
